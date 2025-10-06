@@ -1,0 +1,119 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Player {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  avatar      String?
+  level       Int      @default(1)
+  experience  Int      @default(0)
+  totalGames  Int      @default(0)
+  bestScores  Json?    // {memory: 0, concentration: 0, matching: 0, wordsearch: 0, crossword: 0}
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  scores      Score[]
+  achievements PlayerAchievement[]
+  answerHistory AnswerHistory[]
+  
+  @@map("players")
+}
+
+model Verb {
+  id          Int      @id @default(autoincrement())
+  infinitive  String
+  past        String
+  participle  String
+  translation String
+  spanish     String?  // Spanish translation
+  french      String?  // French translation
+  german      String?  // German translation
+  italian     String?  // Italian translation
+  portuguese  String?  // Portuguese translation
+  category    String   // regular, irregular
+  difficulty  String   // easy, medium, hard
+  type        String   // action, state, modal, auxiliary
+  frequency   Int      @default(0) // usage frequency
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  scores      Score[]
+  answerHistory AnswerHistory[]
+  
+  @@map("verbs")
+}
+
+model Score {
+  id           Int      @id @default(autoincrement())
+  score        Int
+  moves        Int?     // for memory game
+  timeSpent    Int      // in seconds
+  accuracy     Float    // percentage
+  completedAt  DateTime @default(now())
+  
+  playerId     String
+  player       Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  verbId       Int
+  verb         Verb     @relation(fields: [verbId], references: [id])
+  gameType     String   // memory, concentration, matching, wordsearch, crossword
+  gameVariant  String?  // version of the game (e.g., "animals", "food", "travel")
+  
+  @@map("scores")
+}
+
+model AnswerHistory {
+  id          Int      @id @default(autoincrement())
+  question    String
+  userAnswer  String
+  correctAnswer String
+  isCorrect   Boolean
+  timeTaken   Int      // in milliseconds
+  answeredAt  DateTime @default(now())
+  
+  playerId    String
+  player      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  verbId      Int
+  verb        Verb     @relation(fields: [verbId], references: [id])
+  gameType    String
+  gameVariant String?
+  
+  @@map("answer_history")
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  icon        String
+  requirement String   // e.g., "play_10_games", "score_100_points"
+  reward      Int      // experience points
+  
+  players     PlayerAchievement[]
+  
+  @@map("achievements")
+}
+
+model PlayerAchievement {
+  id            String   @id @default(cuid())
+  unlockedAt    DateTime @default(now())
+  
+  playerId      String
+  player        Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  
+  @@unique([playerId, achievementId])
+  @@map("player_achievements")
+}

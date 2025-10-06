@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"  // Cambiar de sqlite a postgresql
+  url      = env("DATABASE_URL")
+}
+
+model Verb {
+  id          String   @id @default(uuid())
+  infinitive  String   @unique
+  pastSimple  String
+  pastParticiple String
+  spanish     String
+  french      String?
+  german      String?
+  italian     String?
+  portuguese  String?
+  category    String   // "regular" o "irregular"
+  difficulty  String   // "easy", "medium", "hard"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model User {
+  id         String   @id @default(uuid())
+  username   String   @unique
+  email      String?  @unique
+  password   String?
+  experience Int      @default(0)
+  level      Int      @default(1)
+  totalGames Int      @default(0)
+  bestScore  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  progress   Progress[]
+}
+
+model Progress {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameType  String
+  score     Int
+  difficulty String
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+}
