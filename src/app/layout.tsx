@@ -17,12 +17,12 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Verbos English - Aprende Verbos en Inglés",
-  description: "¡Aprende verbos en inglés con 30 verbos esenciales y juegos divertidos! Memoria, concentración, crucigramas y más.",
+  description: "¡Aprende verbos en inglés con 100 verbos esenciales y juegos divertidos! Memoria, concentración, crucigramas y más.",
   keywords: ["verbos inglés", "aprender inglés", "juegos educativos", "English verbs", "learning games"],
   authors: [{ name: "Verbos English Team" }],
   openGraph: {
     title: "Verbos English - Aprende Verbos en Inglés",
-    description: "¡Aprende verbos en inglés con 30 verbos esenciales y juegos divertidos!",
+    description: "¡Aprende verbos en inglés con 100 verbos esenciales y juegos divertidos!",
     url: "https://verbos-english.vercel.app",
     siteName: "Verbos English",
     type: "website",
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Verbos English",
-    description: "¡Aprende verbos en inglés con 30 verbos esenciales y juegos divertidos!",
+    description: "¡Aprende verbos en inglés con 100 verbos esenciales y juegos divertidos!",
   },
 };
 

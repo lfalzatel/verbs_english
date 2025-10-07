@@ -35,8 +35,8 @@ const gameLevels: GameLevel[] = [
     id: 'easy',
     name: 'Búsqueda Fácil',
     difficulty: 'easy',
-    description: 'Verbos básicos - 10 palabras',
-    wordCount: 10,
+    description: 'Verbos básicos - 15 palabras',
+    wordCount: 15,
     points: 10,
     timeLimit: 180,
     color: 'bg-green-50 border-green-200 hover:bg-green-100'
@@ -45,8 +45,8 @@ const gameLevels: GameLevel[] = [
     id: 'medium',
     name: 'Búsqueda Media',
     difficulty: 'medium',
-    description: 'Verbos intermedios - 10 palabras',
-    wordCount: 10,
+    description: 'Verbos intermedios - 20 palabras',
+    wordCount: 20,
     points: 15,
     timeLimit: 240,
     color: 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
@@ -55,8 +55,8 @@ const gameLevels: GameLevel[] = [
     id: 'hard',
     name: 'Búsqueda Difícil',
     difficulty: 'hard',
-    description: 'Verbos avanzados - 10 palabras',
-    wordCount: 10,
+    description: 'Verbos avanzados - 15 palabras',
+    wordCount: 15,
     points: 20,
     timeLimit: 300,
     color: 'bg-red-50 border-red-200 hover:bg-red-100'

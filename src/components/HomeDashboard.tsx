@@ -103,7 +103,7 @@ export default function HomeDashboard({ onNavigate }: HomeDashboardProps) {
       id: 'verbs',
       title: 'Lista de Verbos',
       description: 'Explora y estudia la lista completa de verbos con traducciones',
-      variants: 30,
+      variants: 100,
       icon: <BookOpen className="w-8 h-8 text-indigo-600" />,
       features: ['Regulares', 'Irregulares', '3 niveles'],
       color: 'bg-indigo-50 border-indigo-200 hover:bg-indigo-100'
@@ -165,7 +165,7 @@ export default function HomeDashboard({ onNavigate }: HomeDashboardProps) {
             <h1 className="text-4xl font-bold text-gray-800 mx-3">Verbos English</h1>
             <Sparkles className="w-8 h-8 text-purple-600" />
           </div>
-          <p className="text-lg text-gray-600">¡Aprende verbos en inglés con 30 verbos esenciales y juegos divertidos!</p>
+          <p className="text-lg text-gray-600">¡Aprende verbos en inglés con 100 verbos esenciales y juegos divertidos!</p>
         </header>
 
         {/* User Welcome Card */}
@@ -233,7 +233,7 @@ export default function HomeDashboard({ onNavigate }: HomeDashboardProps) {
                   {game.variants > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">
-                        {game.variants} {game.variants === 30 ? 'verbos esenciales' : 'variantes diferentes'}
+                        {game.variants} {game.variants === 100 ? 'verbos esenciales' : 'variantes diferentes'}
                       </span>
                       {game.stats && game.stats.bestScore > 0 && (
                         <div className="flex items-center gap-1 text-xs text-gray-500">
@@ -275,7 +275,7 @@ export default function HomeDashboard({ onNavigate }: HomeDashboardProps) {
               </div>
               
               <div className="text-center">
-                <div className="text-3xl font-bold text-green-600 mb-2">30</div>
+                <div className="text-3xl font-bold text-green-600 mb-2">100</div>
                 <div className="text-sm text-gray-600">Verbos Esenciales</div>
                 <div className="text-xs text-gray-500">Regulares e irregulares en 3 niveles de dificultad</div>
               </div>
