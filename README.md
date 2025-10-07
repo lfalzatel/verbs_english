@@ -1,258 +1,141 @@
-# Verbos English - English Verbs Learning Platform
+# 🚀 Welcome to Z.ai Code Scaffold
 
-A comprehensive Next.js application for learning English verbs through interactive games and exercises.
+A modern, production-ready web application scaffold powered by cutting-edge technologies, designed to accelerate your development with [Z.ai](https://chat.z.ai)'s AI-powered coding assistance.
 
-## 🚀 Features
+## ✨ Technology Stack
 
-- **70+ Interactive Games**: Memory, Concentration, Matching, Word Search, and Crossword puzzles
-- **3 Difficulty Levels**: Easy, Medium, and Hard for progressive learning
-- **Multi-language Support**: Translations in Spanish, French, German, Italian, and Portuguese
-- **User Progress Tracking**: Experience points, levels, and achievement system
-- **Responsive Design**: Works seamlessly on desktop, tablet, and mobile devices
-- **Real-time Features**: WebSocket integration for live interactions
-- **Database Management**: SQLite with Prisma ORM for efficient data handling
+This scaffold provides a robust foundation built with:
 
-## 🛠️ Technology Stack
+### 🎯 Core Framework
+- **⚡ Next.js 15** - The React framework for production with App Router
+- **📘 TypeScript 5** - Type-safe JavaScript for better developer experience
+- **🎨 Tailwind CSS 4** - Utility-first CSS framework for rapid UI development
 
-- **Framework**: Next.js 15 with App Router
-- **Language**: TypeScript 5
-- **Styling**: Tailwind CSS 4 with shadcn/ui components
-- **Database**: SQLite with Prisma ORM
-- **State Management**: Zustand + TanStack Query
-- **Real-time**: Socket.IO
-- **Authentication**: NextAuth.js v4
+### 🧩 UI Components & Styling
+- **🧩 shadcn/ui** - High-quality, accessible components built on Radix UI
+- **🎯 Lucide React** - Beautiful & consistent icon library
+- **🌈 Framer Motion** - Production-ready motion library for React
+- **🎨 Next Themes** - Perfect dark mode in 2 lines of code
 
-## 📦 Installation
+### 📋 Forms & Validation
+- **🎣 React Hook Form** - Performant forms with easy validation
+- **✅ Zod** - TypeScript-first schema validation
 
-### Prerequisites
+### 🔄 State Management & Data Fetching
+- **🐻 Zustand** - Simple, scalable state management
+- **🔄 TanStack Query** - Powerful data synchronization for React
+- **🌐 Axios** - Promise-based HTTP client
 
-- Node.js 18+ 
-- npm or yarn
+### 🗄️ Database & Backend
+- **🗄️ Prisma** - Next-generation Node.js and TypeScript ORM
+- **🔐 NextAuth.js** - Complete open-source authentication solution
 
-### Local Development
+### 🎨 Advanced UI Features
+- **📊 TanStack Table** - Headless UI for building tables and datagrids
+- **🖱️ DND Kit** - Modern drag and drop toolkit for React
+- **📊 Recharts** - Redefined chart library built with React and D3
+- **🖼️ Sharp** - High performance image processing
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd verbos-english
-   ```
+### 🌍 Internationalization & Utilities
+- **🌍 Next Intl** - Internationalization library for Next.js
+- **📅 Date-fns** - Modern JavaScript date utility library
+- **🪝 ReactUse** - Collection of essential React hooks for modern development
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+## 🎯 Why This Scaffold?
 
-3. **Set up environment variables**
-   ```bash
-   cp .env.example .env
-   ```
-   
-   Configure your environment variables:
-   ```env
-   DATABASE_URL=file:./db/custom.db
-   NODE_ENV=development
-   PORT=3000
-   ```
+- **🏎️ Fast Development** - Pre-configured tooling and best practices
+- **🎨 Beautiful UI** - Complete shadcn/ui component library with advanced interactions
+- **🔒 Type Safety** - Full TypeScript configuration with Zod validation
+- **📱 Responsive** - Mobile-first design principles with smooth animations
+- **🗄️ Database Ready** - Prisma ORM configured for rapid backend development
+- **🔐 Auth Included** - NextAuth.js for secure authentication flows
+- **📊 Data Visualization** - Charts, tables, and drag-and-drop functionality
+- **🌍 i18n Ready** - Multi-language support with Next Intl
+- **🚀 Production Ready** - Optimized build and deployment settings
+- **🤖 AI-Friendly** - Structured codebase perfect for AI assistance
 
-4. **Initialize the database**
-   ```bash
-   npm run db:push
-   npm run db:generate
-   ```
-
-5. **Start the development server**
-   ```bash
-   npm run dev
-   ```
-
-   The application will be available at `http://localhost:3000`
-
-## 🚀 Production Deployment
-
-### Option 1: Traditional Deployment
-
-1. **Build the application**
-   ```bash
-   npm run build
-   ```
-
-2. **Start the production server**
-   ```bash
-   npm start
-   ```
-
-### Option 2: Docker Deployment
-
-1. **Build the Docker image**
-   ```bash
-   docker build -t verbos-english .
-   ```
-
-2. **Run the container**
-   ```bash
-   docker run -p 3000:3000 -e NODE_ENV=production verbos-english
-   ```
-
-### Option 3: Docker Compose
-
-Create a `docker-compose.yml` file:
-
-```yaml
-version: '3.8'
-services:
-  app:
-    build: .
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - DATABASE_URL=file:/app/db/custom.db
-    volumes:
-      - ./db:/app/db
-    restart: unless-stopped
-```
-
-Run with:
-```bash
-docker-compose up -d
-```
-
-## 🔧 Configuration
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NODE_ENV` | Environment mode | `development` |
-| `PORT` | Server port | `3000` |
-| `HOSTNAME` | Server hostname | `0.0.0.0` |
-| `DATABASE_URL` | Database connection string | `file:./db/custom.db` |
-| `ALLOWED_ORIGINS` | CORS allowed origins | `*` |
-| `NEXTAUTH_URL` | NextAuth URL | - |
-
-### Database Setup
-
-The application uses SQLite with Prisma ORM. The database is automatically initialized with seed data on first run.
-
-To manually seed the database:
-```bash
-curl -X POST http://localhost:3000/api/verbs/seed
-```
-
-## 📊 Monitoring
-
-### Health Check
-
-Monitor application status:
-```bash
-curl http://localhost:3000/api/health
-```
-
-Response example:
-```json
-{
-  "status": "healthy",
-  "timestamp": "2024-01-01T00:00:00.000Z",
-  "environment": "production",
-  "uptime": 3600,
-  "memory": {
-    "used": "128 MB",
-    "total": "256 MB"
-  },
-  "database": {
-    "connected": true,
-    "status": "connected"
-  },
-  "server": {
-    "port": 3000,
-    "ready": true
-  }
-}
-```
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **Database Connection Errors**
-   - Ensure the database directory exists and is writable
-   - Check the `DATABASE_URL` environment variable
-   - Run `npm run db:push` to create the database schema
-
-2. **Build Errors**
-   - Clear the build cache: `rm -rf .next`
-   - Reinstall dependencies: `rm -rf node_modules && npm install`
-   - Generate Prisma client: `npm run db:generate`
-
-3. **Static Asset Issues**
-   - Ensure `output: 'standalone'` is in `next.config.ts`
-   - Check that public files are properly served
-   - Verify asset paths in production
-
-4. **Performance Issues**
-   - Monitor memory usage via `/api/health`
-   - Check database connection pooling
-   - Enable production optimizations
-
-### Error Messages
-
-- **"Error al cargar los verbos"**: Database connection issue. Try initializing the database.
-- **"El servicio no está disponible temporalmente"**: Server is starting up. Wait a moment and retry.
-- **"Error interno del servidor"**: Database might be initializing. Use the "Inicializar Base de Datos" button.
-
-## 🔄 Development Workflow
-
-### Code Quality
+## 🚀 Quick Start
 
 ```bash
-# Run ESLint
-npm run lint
+# Install dependencies
+npm install
 
-# Type checking
+# Start development server
+npm run dev
+
+# Build for production
 npm run build
 
-# Database operations
-npm run db:push      # Push schema changes
-npm run db:generate  # Generate Prisma client
-npm run db:reset     # Reset database
+# Start production server
+npm start
 ```
 
-### Project Structure
+Open [http://localhost:3000](http://localhost:3000) to see your application running.
+
+## 🤖 Powered by Z.ai
+
+This scaffold is optimized for use with [Z.ai](https://chat.z.ai) - your AI assistant for:
+
+- **💻 Code Generation** - Generate components, pages, and features instantly
+- **🎨 UI Development** - Create beautiful interfaces with AI assistance  
+- **🔧 Bug Fixing** - Identify and resolve issues with intelligent suggestions
+- **📝 Documentation** - Auto-generate comprehensive documentation
+- **🚀 Optimization** - Performance improvements and best practices
+
+Ready to build something amazing? Start chatting with Z.ai at [chat.z.ai](https://chat.z.ai) and experience the future of AI-powered development!
+
+## 📁 Project Structure
 
 ```
 src/
-├── app/                 # Next.js App Router
-│   ├── api/            # API routes
-│   ├── globals.css     # Global styles
-│   ├── layout.tsx      # Root layout
-│   └── page.tsx        # Home page
-├── components/         # React components
-│   ├── ui/            # shadcn/ui components
-│   └── *.tsx          # Game components
-├── contexts/          # React contexts
-├── hooks/             # Custom hooks
-└── lib/               # Utilities and database
+├── app/                 # Next.js App Router pages
+├── components/          # Reusable React components
+│   └── ui/             # shadcn/ui components
+├── hooks/              # Custom React hooks
+└── lib/                # Utility functions and configurations
 ```
 
-## 📝 License
+## 🎨 Available Features & Components
 
-This project is licensed under the MIT License.
+This scaffold includes a comprehensive set of modern web development tools:
 
-## 🤝 Contributing
+### 🧩 UI Components (shadcn/ui)
+- **Layout**: Card, Separator, Aspect Ratio, Resizable Panels
+- **Forms**: Input, Textarea, Select, Checkbox, Radio Group, Switch
+- **Feedback**: Alert, Toast (Sonner), Progress, Skeleton
+- **Navigation**: Breadcrumb, Menubar, Navigation Menu, Pagination
+- **Overlay**: Dialog, Sheet, Popover, Tooltip, Hover Card
+- **Data Display**: Badge, Avatar, Calendar
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+### 📊 Advanced Data Features
+- **Tables**: Powerful data tables with sorting, filtering, pagination (TanStack Table)
+- **Charts**: Beautiful visualizations with Recharts
+- **Forms**: Type-safe forms with React Hook Form + Zod validation
 
-## 📞 Support
+### 🎨 Interactive Features
+- **Animations**: Smooth micro-interactions with Framer Motion
+- **Drag & Drop**: Modern drag-and-drop functionality with DND Kit
+- **Theme Switching**: Built-in dark/light mode support
 
-For issues and questions:
-- Check the troubleshooting section
-- Review the health check endpoint
-- Contact the development team
+### 🔐 Backend Integration
+- **Authentication**: Ready-to-use auth flows with NextAuth.js
+- **Database**: Type-safe database operations with Prisma
+- **API Client**: HTTP requests with Axios + TanStack Query
+- **State Management**: Simple and scalable with Zustand
+
+### 🌍 Production Features
+- **Internationalization**: Multi-language support with Next Intl
+- **Image Optimization**: Automatic image processing with Sharp
+- **Type Safety**: End-to-end TypeScript with Zod validation
+- **Essential Hooks**: 100+ useful React hooks with ReactUse for common patterns
+
+## 🤝 Get Started with Z.ai
+
+1. **Clone this scaffold** to jumpstart your project
+2. **Visit [chat.z.ai](https://chat.z.ai)** to access your AI coding assistant
+3. **Start building** with intelligent code generation and assistance
+4. **Deploy with confidence** using the production-ready setup
 
 ---
 
-**Note**: This application is optimized for production deployment with proper error handling, database initialization, and monitoring capabilities.
+Built with ❤️ for the developer community. Supercharged by [Z.ai](https://chat.z.ai) 🚀

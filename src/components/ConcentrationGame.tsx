@@ -1,448 +1,390 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { usePlayer } from '@/contexts/PlayerContext'
-import { Clock, RotateCcw, Trophy, Target, Zap, Brain } from 'lucide-react'
+import { Trophy, Clock, Target, Zap, RotateCcw } from 'lucide-react'
 
 interface Question {
   id: number
-  verb: any
-  question: string
-  correctAnswer: string
+  english: string
+  spanish: string
   options: string[]
-  type: 'past' | 'participle' | 'translation' | 'multilingual'
+  correct: string
 }
 
-interface GameVariant {
-  id: string
-  name: string
-  description: string
-  difficulty: 'easy' | 'medium' | 'hard'
-  theme: string
-  questionCount: number
-  timeLimit?: number
-  pointsPerQuestion: number
-}
-
-const GAME_VARIANTS: GameVariant[] = [
+const questions: Question[] = [
   {
-    id: 'easy-concentration',
-    name: 'Concentración Fácil',
-    description: 'Verbos básicos en pasado simple, 10 preguntas',
-    difficulty: 'easy',
-    theme: 'basic',
-    questionCount: 10,
-    pointsPerQuestion: 10
+    id: 1,
+    english: 'to be',
+    spanish: 'ser/estar',
+    options: ['tener', 'ser/estar', 'hacer', 'ir'],
+    correct: 'ser/estar'
   },
   {
-    id: 'medium-concentration',
-    name: 'Concentración Media',
-    description: 'Mezcla de pasado y participio, 15 preguntas',
-    difficulty: 'medium',
-    theme: 'mixed',
-    questionCount: 15,
-    pointsPerQuestion: 15
+    id: 2,
+    english: 'to have',
+    spanish: 'tener',
+    options: ['tener', 'ser', 'hacer', 'comer'],
+    correct: 'tener'
   },
   {
-    id: 'hard-concentration',
-    name: 'Concentración Difícil',
-    description: 'Verbos irregulares y traducciones, 20 preguntas',
-    difficulty: 'hard',
-    theme: 'advanced',
-    questionCount: 20,
-    pointsPerQuestion: 20
+    id: 3,
+    english: 'to do',
+    spanish: 'hacer',
+    options: ['jugar', 'trabajar', 'hacer', 'estudiar'],
+    correct: 'hacer'
+  },
+  {
+    id: 4,
+    english: 'to go',
+    spanish: 'ir',
+    options: ['venir', 'ir', 'salir', 'llegar'],
+    correct: 'ir'
+  },
+  {
+    id: 5,
+    english: 'to eat',
+    spanish: 'comer',
+    options: ['beber', 'comer', 'cocinar', 'probar'],
+    correct: 'comer'
+  },
+  {
+    id: 6,
+    english: 'to sleep',
+    spanish: 'dormir',
+    options: ['descansar', 'jugar', 'dormir', 'soñar'],
+    correct: 'dormir'
+  },
+  {
+    id: 7,
+    english: 'to study',
+    spanish: 'estudiar',
+    options: ['aprender', 'enseñar', 'leer', 'estudiar'],
+    correct: 'estudiar'
+  },
+  {
+    id: 8,
+    english: 'to work',
+    spanish: 'trabajar',
+    options: ['descansar', 'jugar', 'trabajar', 'viajar'],
+    correct: 'trabajar'
+  },
+  {
+    id: 9,
+    english: 'to play',
+    spanish: 'jugar',
+    options: ['ganar', 'perder', 'jugar', 'competir'],
+    correct: 'jugar'
+  },
+  {
+    id: 10,
+    english: 'to write',
+    spanish: 'escribir',
+    options: ['leer', 'escribir', 'dibujar', 'pintar'],
+    correct: 'escribir'
+  },
+  {
+    id: 11,
+    english: 'to read',
+    spanish: 'leer',
+    options: ['escuchar', 'hablar', 'leer', 'ver'],
+    correct: 'leer'
+  },
+  {
+    id: 12,
+    english: 'to run',
+    spanish: 'correr',
+    options: ['caminar', 'saltar', 'correr', 'nadar'],
+    correct: 'correr'
+  },
+  {
+    id: 13,
+    english: 'to swim',
+    spanish: 'nadar',
+    options: ['volar', 'nadar', 'bucear', 'flotar'],
+    correct: 'nadar'
+  },
+  {
+    id: 14,
+    english: 'to drive',
+    spanish: 'conducir',
+    options: ['caminar', 'correr', 'conducir', 'viajar'],
+    correct: 'conducir'
+  },
+  {
+    id: 15,
+    english: 'to teach',
+    spanish: 'enseñar',
+    options: ['aprender', 'estudiar', 'enseñar', 'practicar'],
+    correct: 'enseñar'
   }
 ]
 
 export default function ConcentrationGame() {
-  const { player, updateScore, addExperience, saveGameScore } = usePlayer()
-  const [gameState, setGameState] = useState<'menu' | 'playing' | 'finished'>('menu')
-  const [selectedVariant, setSelectedVariant] = useState<GameVariant | null>(null)
-  const [questions, setQuestions] = useState<Question[]>([])
-  const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [selectedAnswer, setSelectedAnswer] = useState<string>('')
+  const [gameStarted, setGameStarted] = useState(false)
+  const [gameCompleted, setGameCompleted] = useState(false)
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [score, setScore] = useState(0)
-  const [correctAnswers, setCorrectAnswers] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(0)
+  const [timeLeft, setTimeLeft] = useState(30)
+  const [selectedAnswer, setSelectedAnswer] = useState('')
   const [showResult, setShowResult] = useState(false)
   const [isCorrect, setIsCorrect] = useState(false)
-  const [gameVerbs, setGameVerbs] = useState<any[]>([])
+  const [streak, setStreak] = useState(0)
+  const [bestScore, setBestScore] = useState<number | null>(null)
+  const [usedQuestions, setUsedQuestions] = useState<number[]>([])
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null)
+
+  useEffect(() => {
+    const saved = localStorage.getItem('concentrationGameBestScore')
+    if (saved) {
+      setBestScore(parseInt(saved))
+    }
+  }, [])
 
   useEffect(() => {
     let interval: NodeJS.Timeout
-    if (gameState === 'playing' && timeLeft > 0 && !showResult) {
+    if (gameStarted && !gameCompleted && timeLeft > 0 && !showResult) {
       interval = setInterval(() => {
         setTimeLeft(prev => prev - 1)
       }, 1000)
-    } else if (timeLeft === 0 && gameState === 'playing' && !showResult) {
-      handleAnswer()
+    } else if (timeLeft === 0 && !gameCompleted) {
+      handleTimeout()
     }
     return () => clearInterval(interval)
-  }, [timeLeft, gameState, showResult])
+  }, [gameStarted, gameCompleted, timeLeft, showResult])
 
-  const fetchVerbs = async (variant: GameVariant) => {
-    try {
-      const response = await fetch('/api/verbs')
-      const verbs = await response.json()
-      
-      let filteredVerbs = verbs
-      
-      // Filter by theme and difficulty
-      if (variant.theme === 'basic') {
-        filteredVerbs = verbs.filter((v: any) => v.difficulty === 'easy')
-      } else if (variant.theme === 'mixed') {
-        filteredVerbs = verbs.filter((v: any) => ['easy', 'medium'].includes(v.difficulty))
-      } else if (variant.theme === 'advanced') {
-        // Mix of irregular and hard verbs
-        const irregularVerbs = verbs.filter((v: any) => v.category === 'irregular')
-        const hardVerbs = verbs.filter((v: any) => v.difficulty === 'hard')
-        filteredVerbs = [...irregularVerbs.slice(0, 10), ...hardVerbs.slice(0, 10)]
-      }
-      
-      // Additional difficulty filtering
-      if (variant.difficulty === 'easy') {
-        filteredVerbs = filteredVerbs.filter((v: any) => v.difficulty === 'easy')
-      } else if (variant.difficulty === 'medium') {
-        filteredVerbs = filteredVerbs.filter((v: any) => ['easy', 'medium'].includes(v.difficulty))
-      }
-      
-      // Random selection
-      const shuffled = filteredVerbs.sort(() => Math.random() - 0.5)
-      const selected = shuffled.slice(0, variant.questionCount)
-      
-      setGameVerbs(selected)
-      return selected
-    } catch (error) {
-      console.error('Error fetching verbs:', error)
-      return []
+  const getRandomQuestion = useCallback(() => {
+    const availableQuestions = questions.filter(q => !usedQuestions.includes(q.id))
+    if (availableQuestions.length === 0) {
+      return null
     }
-  }
+    const randomIndex = Math.floor(Math.random() * availableQuestions.length)
+    return availableQuestions[randomIndex]
+  }, [usedQuestions])
 
-  const generateQuestions = async (variant: GameVariant) => {
-    const verbs = await fetchVerbs(variant)
-    const gameQuestions: Question[] = []
-
-    verbs.forEach((verb: any, index: number) => {
-      let question: Question = {
-        id: index,
-        verb,
-        question: '',
-        correctAnswer: '',
-        options: [],
-        type: 'past'
-      }
-
-      if (variant.theme === 'basic') {
-        question.question = `¿Cuál es el pasado de "${verb.infinitive}"?`
-        question.correctAnswer = verb.past
-        question.type = 'past'
-      } else if (variant.theme === 'mixed') {
-        const isPast = Math.random() > 0.5
-        if (isPast) {
-          question.question = `¿Cuál es el pasado de "${verb.infinitive}"?`
-          question.correctAnswer = verb.past
-          question.type = 'past'
-        } else {
-          question.question = `¿Cuál es el participio de "${verb.infinitive}"?`
-          question.correctAnswer = verb.participle
-          question.type = 'participle'
-        }
-      } else if (variant.theme === 'advanced') {
-        // Mix of past, participle and translation
-        const questionType = Math.random()
-        if (questionType < 0.4) {
-          question.question = `¿Cuál es el pasado de "${verb.infinitive}"?`
-          question.correctAnswer = verb.past
-          question.type = 'past'
-        } else if (questionType < 0.7) {
-          question.question = `¿Cuál es el participio de "${verb.infinitive}"?`
-          question.correctAnswer = verb.participle
-          question.type = 'participle'
-        } else {
-          question.question = `¿Cómo se traduce "${verb.infinitive}"?`
-          question.correctAnswer = verb.spanish || verb.translation
-          question.type = 'translation'
-        }
-      }
-
-      // Generate options
-      const allAnswers = verbs.map((v: any) => {
-        if (question.type === 'translation' || question.type === 'multilingual') {
-          return question.type === 'multilingual' 
-            ? v.french || v.german || v.italian || v.portuguese || v.spanish || v.translation
-            : v.spanish || v.translation
-        } else if (question.type === 'past') {
-          return v.past
-        } else {
-          return v.participle
-        }
-      }).filter(Boolean)
-
-      const wrongAnswers = allAnswers
-        .filter(answer => answer !== question.correctAnswer)
-        .sort(() => Math.random() - 0.5)
-        .slice(0, 3)
-
-      question.options = [question.correctAnswer, ...wrongAnswers].sort(() => Math.random() - 0.5)
-      gameQuestions.push(question)
-    })
-
-    return gameQuestions
-  }
-
-  const startGame = async (variant: GameVariant) => {
-    setSelectedVariant(variant)
-    const gameQuestions = await generateQuestions(variant)
-    setQuestions(gameQuestions)
-    setCurrentQuestion(0)
+  const startGame = () => {
+    setGameStarted(true)
+    setGameCompleted(false)
     setScore(0)
-    setCorrectAnswers(0)
-    setTimeLeft(variant.timeLimit || 0)
-    setShowResult(false)
+    setTimeLeft(30)
+    setStreak(0)
+    setUsedQuestions([])
     setSelectedAnswer('')
-    setGameState('playing')
+    setShowResult(false)
+    loadNewQuestion()
   }
 
-  const handleAnswer = () => {
-    if (!selectedAnswer) return
+  const loadNewQuestion = () => {
+    const question = getRandomQuestion()
+    if (!question) {
+      completeGame()
+      return
+    }
+    setCurrentQuestion(question)
+    setUsedQuestions(prev => [...prev, question.id])
+    setSelectedAnswer('')
+    setShowResult(false)
+    setTimeLeft(30)
+  }
 
-    const correct = selectedAnswer === questions[currentQuestion].correctAnswer
+  const handleAnswerSelect = (answer: string) => {
+    if (showResult) return
+    
+    setSelectedAnswer(answer)
+    const correct = answer === currentQuestion?.correct
     setIsCorrect(correct)
     setShowResult(true)
 
     if (correct) {
-      const points = selectedVariant?.pointsPerQuestion || 10
-      const timeBonus = selectedVariant?.timeLimit ? Math.floor((timeLeft / (selectedVariant.timeLimit || 1)) * points) : 0
-      setScore(score + points + timeBonus)
-      setCorrectAnswers(correctAnswers + 1)
+      const points = Math.max(10, Math.floor(timeLeft / 3) * 10)
+      const streakBonus = streak * 5
+      setScore(prev => prev + points + streakBonus)
+      setStreak(prev => prev + 1)
+    } else {
+      setStreak(0)
     }
 
     setTimeout(() => {
-      if (currentQuestion < questions.length - 1) {
-        setCurrentQuestion(currentQuestion + 1)
-        setSelectedAnswer('')
-        setShowResult(false)
-        setTimeLeft(selectedVariant?.timeLimit || 0)
+      if (correct) {
+        loadNewQuestion()
       } else {
-        endGame()
+        completeGame()
       }
     }, 2000)
   }
 
-  const endGame = () => {
-    setGameState('finished')
-    
-    if (player && selectedVariant) {
-      const accuracy = questions.length > 0 ? (score / (questions.length * 10)) * 100 : 0
-      
-      updateScore('concentration', score)
-      addExperience(Math.floor(score / 10))
-  const timeSpent = 0 // TODO: Implement proper time tracking
-      saveGameScore('concentration', score, timeSpent, accuracy)
+  const handleTimeout = () => {
+    setShowResult(true)
+    setIsCorrect(false)
+    setStreak(0)
+    setTimeout(() => {
+      completeGame()
+    }, 2000)
+  }
+
+  const completeGame = () => {
+    setGameCompleted(true)
+    if (!bestScore || score > bestScore) {
+      setBestScore(score)
+      localStorage.setItem('concentrationGameBestScore', score.toString())
     }
   }
 
-  const resetGame = () => {
-    setGameState('menu')
-    setSelectedVariant(null)
-    setQuestions([])
-    setCurrentQuestion(0)
-    setSelectedAnswer('')
-    setScore(0)
-    setCorrectAnswers(0)
-    setTimeLeft(0)
-    setShowResult(false)
+  const formatTime = (seconds: number) => {
+    return `${seconds}s`
   }
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'easy': return 'bg-green-100 text-green-800'
-      case 'medium': return 'bg-yellow-100 text-yellow-800'
-      case 'hard': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
+  const getDifficultyColor = (timeLeft: number) => {
+    if (timeLeft > 20) return 'text-green-600'
+    if (timeLeft > 10) return 'text-yellow-600'
+    return 'text-red-600'
   }
 
-  if (!player) {
-    return (
-      <Card className="w-full max-w-2xl mx-auto">
-        <CardContent className="p-8 text-center">
-          <p className="text-lg">Por favor ingresa tu nombre para jugar</p>
+  const getStreakColor = (streak: number) => {
+    if (streak >= 5) return 'bg-purple-500'
+    if (streak >= 3) return 'bg-blue-500'
+    return 'bg-gray-500'
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="w-6 h-6 text-purple-600" />
+            Juego de Concentración - Velocidad y Precisión
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center space-y-4">
+            <p className="text-gray-600">
+              Responde correctamente antes de que se acabe el tiempo. 
+              ¡Construye una racha de respuestas correctas para obtener bonus!
+            </p>
+
+            {!gameStarted && (
+              <Button onClick={startGame} size="lg" className="bg-purple-600 hover:bg-purple-700">
+                <Zap className="w-5 h-5 mr-2" />
+                Comenzar Desafío
+              </Button>
+            )}
+
+            {gameStarted && currentQuestion && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
+                <div className="text-center">
+                  <p className="text-sm text-gray-500">Puntuación</p>
+                  <p className="text-2xl font-bold text-purple-600">{score}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-gray-500">Tiempo</p>
+                  <p className={`text-2xl font-bold ${getDifficultyColor(timeLeft)}`}>
+                    {formatTime(timeLeft)}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-gray-500">Racha</p>
+                  <div className="flex items-center justify-center gap-1">
+                    <div className={`w-8 h-8 rounded-full ${getStreakColor(streak)} text-white flex items-center justify-center text-sm font-bold`}>
+                      {streak}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-gray-500">Mejor Puntuación</p>
+                  <p className="text-2xl font-bold text-yellow-600">{bestScore || '-'}</p>
+                </div>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
-    )
-  }
 
-  if (gameState === 'menu') {
-    return (
-      <div className="space-y-6">
+      {gameStarted && currentQuestion && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Brain className="w-6 h-6 text-purple-600" />
-              Juego de Concentración de Verbos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-3 gap-6">
-              {GAME_VARIANTS.map(variant => (
-                <Card key={variant.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <CardTitle className="text-lg">{variant.name}</CardTitle>
-                      <Badge className={getDifficultyColor(variant.difficulty)}>
-                        {variant.difficulty === 'easy' ? 'Fácil' : variant.difficulty === 'medium' ? 'Medio' : 'Difícil'}
-                      </Badge>
+          <CardContent className="p-8">
+            <div className="text-center space-y-6">
+              <div className="space-y-2">
+                <Badge variant="outline" className="text-sm">
+                  Pregunta {usedQuestions.length}
+                </Badge>
+                <h3 className="text-2xl font-bold text-gray-800">
+                  ¿Cuál es la traducción de:
+                </h3>
+                <div className="text-4xl font-bold text-purple-600 py-4">
+                  "{currentQuestion.english}"
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+                {currentQuestion.options.map((option, index) => (
+                  <Button
+                    key={index}
+                    onClick={() => handleAnswerSelect(option)}
+                    disabled={showResult}
+                    variant={showResult ? (option === currentQuestion.correct ? 'default' : 
+                                   option === selectedAnswer ? 'destructive' : 'outline') : 'outline'}
+                    className={`p-4 text-lg font-medium transition-all
+                      ${!showResult && 'hover:bg-purple-100 hover:border-purple-300'}
+                      ${showResult && option === currentQuestion.correct ? 'bg-green-600 hover:bg-green-700' : ''}
+                      ${showResult && option === selectedAnswer && option !== currentQuestion.correct ? 'bg-red-600 hover:bg-red-700' : ''}
+                    `}
+                  >
+                    {option}
+                  </Button>
+                ))}
+              </div>
+
+              {showResult && (
+                <div className={`text-lg font-bold ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+                  {isCorrect ? '✓ ¡Correcto!' : '✗ Incorrecto'}
+                  {isCorrect && streak > 0 && (
+                    <div className="text-sm text-purple-600 mt-1">
+                      +{Math.max(10, Math.floor(timeLeft / 3) * 10)} puntos 
+                      {streak > 1 && ` +${streak * 5} bonus de racha`}
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600 mb-4">{variant.description}</p>
-                    <div className="flex justify-between text-sm text-gray-500 mb-4">
-                      <span>{variant.questionCount} preguntas</span>
-                      <span>{variant.pointsPerQuestion} pts</span>
-                    </div>
-                    <Button 
-                      onClick={() => startGame(variant)} 
-                      className="w-full"
-                    >
-                      Comenzar Juego
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+                  )}
+                </div>
+              )}
+
+              {timeLeft <= 10 && !showResult && (
+                <div className="text-red-600 font-bold animate-pulse">
+                  ¡Apúrate! Queda poco tiempo.
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
-      </div>
-    )
-  }
+      )}
 
-  if (gameState === 'playing') {
-    const question = questions[currentQuestion]
-    
-    return (
-      <Card className="w-full max-w-4xl mx-auto">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-xl">{selectedVariant?.name}</CardTitle>
-            <div className="flex items-center gap-4">
-              <Badge variant="outline">Pregunta {currentQuestion + 1}/{questions.length}</Badge>
-              <Badge variant="outline">Puntos: {score}</Badge>
-              {selectedVariant?.timeLimit && (
-                <Badge variant={timeLeft <= 3 ? 'destructive' : 'outline'} className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {timeLeft}s
-                </Badge>
-              )}
-              <Button onClick={resetGame} variant="outline" size="sm">
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Salir
-              </Button>
-            </div>
-          </div>
-          <Progress value={((currentQuestion + 1) / questions.length) * 100} className="w-full" />
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="text-center">
-            <h3 className="text-2xl font-bold mb-6">{question.question}</h3>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            {question.options.map((option, index) => (
-              <Button
-                key={index}
-                onClick={() => !showResult && setSelectedAnswer(option)}
-                disabled={showResult}
-                variant={showResult ? (
-                  option === question.correctAnswer ? 'default' :
-                  selectedAnswer === option ? 'destructive' : 'outline'
-                ) : (
-                  selectedAnswer === option ? 'default' : 'outline'
-                )}
-                className={`p-4 h-auto text-lg ${
-                  showResult && option === question.correctAnswer ? 'bg-green-500 hover:bg-green-600' :
-                  showResult && selectedAnswer === option && option !== question.correctAnswer ? 'bg-red-500 hover:bg-red-600' :
-                  ''
-                }`}
-              >
-                {option}
-              </Button>
-            ))}
-          </div>
-
-          {showResult && (
-            <div className={`text-center p-4 rounded-lg ${
-              isCorrect ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-            }`}>
-              <p className="text-lg font-semibold">
-                {isCorrect ? '¡Correcto!' : 'Incorrecto'}
+      {gameCompleted && (
+        <Card className="bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
+          <CardContent className="text-center py-8">
+            <Trophy className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+            <h3 className="text-2xl font-bold text-purple-800 mb-2">
+              {score > 50 ? '¡Excelente!' : score > 20 ? '¡Buen trabajo!' : '¡Sigue practicando!'}
+            </h3>
+            <p className="text-gray-700 mb-4">
+              Tu puntuación final: <span className="font-bold text-purple-600">{score}</span> puntos
+            </p>
+            <p className="text-sm text-gray-600 mb-4">
+              Respondiste correctamente {usedQuestions.length - (showResult && !isCorrect ? 1 : 0)} preguntas
+            </p>
+            {bestScore === score && score > 0 && (
+              <p className="text-sm text-purple-600 font-medium mb-4">
+                ¡Nueva mejor puntuación!
               </p>
-              {!isCorrect && (
-                <p className="text-sm mt-1">
-                  La respuesta correcta es: {question.correctAnswer}
-                </p>
-              )}
-            </div>
-          )}
-
-          {!showResult && (
-            <div className="text-center">
-              <Button 
-                onClick={handleAnswer}
-                disabled={!selectedAnswer}
-                size="lg"
-                className="px-8"
-              >
-                Responder
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (gameState === 'finished') {
-    const accuracy = Math.round((correctAnswers / questions.length) * 100)
-    
-    return (
-      <Card className="w-full max-w-2xl mx-auto">
-        <CardHeader className="text-center">
-          <Trophy className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-          <CardTitle className="text-2xl">¡Juego Completado!</CardTitle>
-        </CardHeader>
-        <CardContent className="text-center space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-600">Respuestas Correctas</p>
-              <p className="text-2xl font-bold">{correctAnswers}/{questions.length}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Precisión</p>
-              <p className="text-2xl font-bold">{accuracy}%</p>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Puntuación Final</p>
-            <p className="text-3xl font-bold text-green-600">{score}</p>
-          </div>
-          <div className="flex gap-2 justify-center">
-            <Button onClick={() => selectedVariant && startGame(selectedVariant)}>
+            )}
+            <Button onClick={startGame} className="bg-purple-600 hover:bg-purple-700">
               <RotateCcw className="w-4 h-4 mr-2" />
               Jugar de Nuevo
             </Button>
-            <Button onClick={resetGame} variant="outline">
-              Otra Variante
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  return null
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
 }

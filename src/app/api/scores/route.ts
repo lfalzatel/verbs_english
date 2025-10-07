@@ -1,165 +1,210 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { db, isInMemoryDatabase } from '@/lib/db'
+import { NextRequest, NextResponse } from 'next/server';
 
-// Mock data for when database is not available
-function getMockScores() {
-  return [
-    {
-      id: 1,
-      score: 100,
-      timeSpent: 30,
-      accuracy: 100,
-      completedAt: new Date().toISOString(),
-      gameType: 'memory',
-      user: { displayName: 'Demo User', username: 'demo' },
-      verb: { infinitive: 'play', translation: 'jugar' }
-    },
-    {
-      id: 2,
-      score: 85,
-      timeSpent: 45,
-      accuracy: 85,
-      completedAt: new Date().toISOString(),
-      gameType: 'concentration',
-      user: { displayName: 'Demo User', username: 'demo' },
-      verb: { infinitive: 'eat', translation: 'comer' }
-    }
-  ]
+interface Score {
+  id: string;
+  playerName: string;
+  gameId: string;
+  level: string;
+  score: number;
+  time: number;
+  accuracy: number;
+  date: string;
 }
+
+// Base de datos simulada de puntajes
+let scores: Score[] = [
+  {
+    id: '1',
+    playerName: 'Luis',
+    gameId: 'memory',
+    level: 'easy',
+    score: 100,
+    time: 45,
+    accuracy: 100,
+    date: new Date().toISOString()
+  },
+  {
+    id: '2',
+    playerName: 'Ana',
+    gameId: 'memory',
+    level: 'medium',
+    score: 85,
+    time: 120,
+    accuracy: 90,
+    date: new Date().toISOString()
+  },
+  {
+    id: '3',
+    playerName: 'Carlos',
+    gameId: 'concentration',
+    level: 'easy',
+    score: 95,
+    time: 60,
+    accuracy: 95,
+    date: new Date().toISOString()
+  }
+];
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const gameType = searchParams.get('gameType')
-    const userId = searchParams.get('userId')
-    const limit = parseInt(searchParams.get('limit') || '10')
+    const { searchParams } = new URL(request.url);
+    const gameId = searchParams.get('gameId');
+    const level = searchParams.get('level');
+    const playerName = searchParams.get('playerName');
+    const limit = searchParams.get('limit');
 
-    // If we're in a read-only environment, return mock data
-    if (isInMemoryDatabase()) {
-      console.log('🚀 Using mock scores data (read-only environment)')
-      let mockScores = getMockScores()
-      
-      if (gameType) {
-        mockScores = mockScores.filter(score => score.gameType === gameType)
-      }
-      
-      return NextResponse.json(mockScores.slice(0, limit))
+    let filteredScores = [...scores];
+
+    // Filtrar por juego
+    if (gameId) {
+      filteredScores = filteredScores.filter(score => score.gameId === gameId);
     }
 
-    let whereClause: any = {}
-    if (gameType) {
-      whereClause.gameType = gameType
-    }
-    if (userId) {
-      whereClause.playerId = userId
+    // Filtrar por nivel
+    if (level) {
+      filteredScores = filteredScores.filter(score => score.level === level);
     }
 
-    const scores = await db.score.findMany({
-      where: whereClause,
-      orderBy: [
-        { score: 'desc' },
-        { completedAt: 'desc' }
-      ],
-      take: limit,
-      include: {
-        player: {
-          select: {
-            name: true
-          }
-        },
-        verb: {
-          select: {
-            infinitive: true,
-            translation: true
-          }
-        }
-      }
-    })
+    // Filtrar por jugador
+    if (playerName) {
+      filteredScores = filteredScores.filter(score => 
+        score.playerName.toLowerCase().includes(playerName.toLowerCase())
+      );
+    }
 
-    return NextResponse.json(scores)
+    // Ordenar por puntaje (descendente)
+    filteredScores.sort((a, b) => b.score - a.score);
+
+    // Limitar resultados
+    if (limit) {
+      const limitNum = parseInt(limit);
+      filteredScores = filteredScores.slice(0, limitNum);
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: filteredScores,
+      total: filteredScores.length
+    });
+
   } catch (error) {
-    console.error('Error fetching scores:', error)
-    
-    // Fallback to mock data on error
-    console.log('🚀 Falling back to mock scores data due to error')
-    return NextResponse.json(getMockScores())
+    console.error('Error fetching scores:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Error al cargar los puntajes',
+        message: 'Por favor intenta de nuevo más tarde'
+      },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { userId, gameType, score, moves, timeSpent, accuracy, verbId } = body
+    const body = await request.json();
+    const { playerName, gameId, level, score, time, accuracy } = body;
 
-    if (!userId || !gameType || score === undefined || !timeSpent || !verbId) {
+    // Validar datos
+    if (!playerName || !gameId || !level || score === undefined || time === undefined || accuracy === undefined) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
-    }
-
-    // If we're in a read-only environment, just return success without saving
-    if (isInMemoryDatabase()) {
-      console.log('🚀 Mock score saved (read-only environment)')
-      return NextResponse.json({
-        id: Date.now(),
-        userId,
-        gameType,
-        score,
-        moves: moves || null,
-        timeSpent,
-        accuracy: accuracy || 0,
-        verbId: parseInt(verbId),
-        completedAt: new Date().toISOString(),
-        message: 'Score saved successfully (in memory)'
-      }, { status: 201 })
-    }
-
-    const newScore = await db.score.create({
-      data: {
-        playerId: userId,
-        gameType,
-        score,
-        moves: moves || null,
-        timeSpent,
-        accuracy: accuracy || 0,
-        verbId: parseInt(verbId)
-      },
-      include: {
-        player: {
-          select: {
-            name: true
-          }
+        { 
+          success: false, 
+          error: 'Datos incompletos',
+          message: 'Todos los campos son requeridos'
         },
-        verb: {
-          select: {
-            infinitive: true,
-            translation: true
-          }
-        }
-      }
-    })
+        { status: 400 }
+      );
+    }
 
-    // Update player stats
-    await db.player.update({
-      where: { id: userId },
-      data: {
-        totalGames: { increment: 1 }
-      }
-    })
+    // Crear nuevo puntaje
+    const newScore: Score = {
+      id: Date.now().toString(),
+      playerName,
+      gameId,
+      level,
+      score: Math.max(0, Math.min(100, score)), // Asegurar que esté entre 0 y 100
+      time: Math.max(0, time),
+      accuracy: Math.max(0, Math.min(100, accuracy)),
+      date: new Date().toISOString()
+    };
 
-    return NextResponse.json(newScore, { status: 201 })
-  } catch (error) {
-    console.error('Error creating score:', error)
-    
-    // Fallback to mock response on error
-    console.log('🚀 Falling back to mock score save due to error')
-    const body = await request.json().catch(() => ({}))
+    // Agregar a la base de datos
+    scores.push(newScore);
+
+    // Obtener ranking
+    const ranking = scores
+      .filter(s => s.gameId === gameId && s.level === level)
+      .sort((a, b) => b.score - a.score)
+      .findIndex(s => s.id === newScore.id) + 1;
+
     return NextResponse.json({
-      id: Date.now(),
-      ...body,
-      completedAt: new Date().toISOString(),
-      message: 'Score saved successfully (fallback mode)'
-    }, { status: 201 })
+      success: true,
+      data: {
+        score: newScore,
+        ranking,
+        message: 'Puntaje guardado exitosamente'
+      }
+    });
+
+  } catch (error) {
+    console.error('Error saving score:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Error al guardar el puntaje',
+        message: 'Por favor intenta de nuevo más tarde'
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const scoreId = searchParams.get('id');
+
+    if (!scoreId) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'ID de puntaje no proporcionado',
+          message: 'Se requiere el ID del puntaje a eliminar'
+        },
+        { status: 400 }
+      );
+    }
+
+    // Eliminar puntaje
+    const initialLength = scores.length;
+    scores = scores.filter(score => score.id !== scoreId);
+
+    if (scores.length === initialLength) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Puntaje no encontrado',
+          message: 'El puntaje especificado no existe'
+        },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Puntaje eliminado exitosamente'
+    });
+
+  } catch (error) {
+    console.error('Error deleting score:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Error al eliminar el puntaje',
+        message: 'Por favor intenta de nuevo más tarde'
+      },
+      { status: 500 }
+    );
   }
 }

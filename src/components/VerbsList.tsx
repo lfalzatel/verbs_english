@@ -27,7 +27,6 @@ export default function VerbsList() {
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [isInMemoryMode, setIsInMemoryMode] = useState(false)
 
   const categories = ['all', 'regular', 'irregular']
   const difficulties = ['all', 'easy', 'medium', 'hard']
@@ -35,19 +34,6 @@ export default function VerbsList() {
   useEffect(() => {
     fetchVerbs()
   }, [])
-
-  // Add a retry mechanism for when the component shows an error
-  useEffect(() => {
-    if (error && !loading) {
-      // Auto-retry after 3 seconds if there's an error
-      const timer = setTimeout(() => {
-        console.log('Auto-retrying due to previous error...')
-        fetchVerbs()
-      }, 3000)
-      
-      return () => clearTimeout(timer)
-    }
-  }, [error, loading])
 
   useEffect(() => {
     let filtered = verbs
@@ -75,66 +61,16 @@ export default function VerbsList() {
   const fetchVerbs = async () => {
     try {
       setLoading(true)
-      setError(null)
-      
-      console.log('Fetching verbs from /api/verbs...')
       const response = await fetch('/api/verbs')
-      
-      console.log('Response status:', response.status)
-      console.log('Response ok:', response.ok)
-      
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error('Error response text:', errorText)
-        
-        if (response.status === 503) {
-          throw new Error('El servicio no está disponible temporalmente. Por favor intenta en unos momentos.')
-        } else if (response.status === 500) {
-          throw new Error('Error interno del servidor. La base de datos podría estar inicializándose.')
-        } else {
-          throw new Error(`Error ${response.status}: ${response.statusText}`)
-        }
+        throw new Error('Failed to fetch verbs')
       }
-      
       const data = await response.json()
-      console.log('Received data:', data.length, 'verbs')
-      
-      if (!Array.isArray(data)) {
-        console.error('Data is not an array:', typeof data, data)
-        throw new Error('La respuesta del servidor no es válida.')
-      }
-      
       setVerbs(data)
       setFilteredVerbs(data)
-      
-      // Check if we're in memory mode by checking if there's a warning in the console
-      // or if the data seems like mock data
-      if (data.length > 0 && data[0].id && typeof data[0].id === 'number') {
-        setIsInMemoryMode(false)
-      } else {
-        setIsInMemoryMode(true)
-      }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error desconocido'
+      setError('Error al cargar los verbos. Por favor intenta de nuevo.')
       console.error('Error fetching verbs:', err)
-      
-      // If there's a network error, try to use fallback data
-      if (err instanceof Error && err.message.includes('Failed to fetch')) {
-        console.log('Network error detected, using fallback data...')
-        const fallbackData = [
-          { id: 1, infinitive: 'play', past: 'played', participle: 'played', translation: 'jugar', category: 'regular', difficulty: 'easy' as const, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-          { id: 2, infinitive: 'eat', past: 'ate', participle: 'eaten', translation: 'comer', category: 'irregular', difficulty: 'medium' as const, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-          { id: 3, infinitive: 'go', past: 'went', participle: 'gone', translation: 'ir', category: 'irregular', difficulty: 'medium' as const, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-          { id: 4, infinitive: 'be', past: 'was/were', participle: 'been', translation: 'ser/estar', category: 'irregular', difficulty: 'hard' as const, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-          { id: 5, infinitive: 'have', past: 'had', participle: 'had', translation: 'tener', category: 'irregular', difficulty: 'hard' as const, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
-        ]
-        setVerbs(fallbackData)
-        setFilteredVerbs(fallbackData)
-        setIsInMemoryMode(true)
-        setError(`Modo de emergencia: ${errorMessage}`)
-      } else {
-        setError(`Error al cargar los verbos: ${errorMessage}`)
-      }
     } finally {
       setLoading(false)
     }
@@ -143,39 +79,14 @@ export default function VerbsList() {
   const seedDatabase = async () => {
     try {
       setLoading(true)
-      setError(null)
-      
-      console.log('Seeding database...')
       const response = await fetch('/api/verbs/seed', { method: 'POST' })
-      
-      console.log('Seed response status:', response.status)
-      console.log('Seed response ok:', response.ok)
-      
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error('Seed error response text:', errorText)
-        
-        if (response.status === 503) {
-          throw new Error('El servicio no está disponible temporalmente. Por favor intenta en unos momentos.')
-        } else if (response.status === 500) {
-          throw new Error('Error al inicializar la base de datos. Por favor intenta de nuevo.')
-        } else {
-          throw new Error(`Error ${response.status}: ${response.statusText}`)
-        }
+        throw new Error('Failed to seed database')
       }
-      
-      const result = await response.json()
-      console.log('Seed result:', result)
-      
-      // Wait a moment for the database to be ready
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Fetch verbs after seeding
       await fetchVerbs()
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error desconocido'
+      setError('Error al inicializar la base de datos.')
       console.error('Error seeding database:', err)
-      setError(`Error al inicializar la base de datos: ${errorMessage}`)
     } finally {
       setLoading(false)
     }
@@ -213,58 +124,27 @@ export default function VerbsList() {
         <Card>
           <CardContent className="text-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
-            <p className="mt-2 text-gray-600">
-              {error ? 'Reintentando...' : 'Cargando verbos...'}
-            </p>
-            {error && (
-              <p className="text-xs text-gray-500 mt-1">
-                Error anterior: {error}
-              </p>
-            )}
+            <p className="mt-2 text-gray-600">Cargando verbos...</p>
           </CardContent>
         </Card>
       </div>
     )
   }
 
-  if (error && verbs.length === 0) {
+  if (error) {
     return (
       <div className="space-y-6">
         <Card>
           <CardContent className="text-center py-8">
-            <div className="max-w-md mx-auto">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <RefreshCw className="w-8 h-8 text-red-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Error al cargar los verbos
-              </h3>
-              <p className="text-red-600 mb-6 text-sm leading-relaxed">
-                {error}
-              </p>
-              <div className="space-y-3">
-                <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                  <Button onClick={fetchVerbs} variant="outline" className="w-full sm:w-auto">
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Reintentar
-                  </Button>
-                  <Button onClick={seedDatabase} className="w-full sm:w-auto">
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Inicializar Base de Datos
-                  </Button>
-                </div>
-                <p className="text-xs text-gray-500">
-                  Si el problema persiste, recarga la página o contacta al administrador.
-                </p>
-                <details className="text-left text-xs text-gray-400 mt-2">
-                  <summary className="cursor-pointer">Información de depuración</summary>
-                  <div className="mt-2 p-2 bg-gray-100 rounded text-xs">
-                    <p>URL: {typeof window !== 'undefined' ? window.location.href : 'N/A'}</p>
-                    <p>Timestamp: {new Date().toISOString()}</p>
-                    <p>User Agent: {typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 50) + '...' : 'N/A'}</p>
-                  </div>
-                </details>
-              </div>
+            <p className="text-red-600 mb-4">{error}</p>
+            <div className="space-x-2">
+              <Button onClick={fetchVerbs} variant="outline">
+                Reintentar
+              </Button>
+              <Button onClick={seedDatabase}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Inicializar Base de Datos
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -274,52 +154,6 @@ export default function VerbsList() {
 
   return (
     <div className="space-y-6">
-      {/* Emergency Mode Banner */}
-      {error && verbs.length > 0 && (
-        <Card className="bg-orange-50 border-orange-200">
-          <CardContent className="py-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                <RefreshCw className="w-4 h-4 text-orange-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-semibold text-orange-800">
-                  ⚠️ Modo de Emergencia
-                </h3>
-                <p className="text-xs text-orange-700">
-                  {error}
-                </p>
-              </div>
-              <Button onClick={fetchVerbs} variant="outline" size="sm">
-                <RefreshCw className="w-4 h-4 mr-1" />
-                Reintentar
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Memory Mode Banner */}
-      {isInMemoryMode && !error && (
-        <Card className="bg-amber-50 border-amber-200">
-          <CardContent className="py-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
-                <RefreshCw className="w-4 h-4 text-amber-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-semibold text-amber-800">
-                  🚀 Modo Demo Activo
-                </h3>
-                <p className="text-xs text-amber-700">
-                  La aplicación está funcionando en modo de memoria. Las estadísticas no se guardarán permanentemente.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

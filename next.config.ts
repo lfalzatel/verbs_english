@@ -4,26 +4,23 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  reactStrictMode: false,
+  // Configuración para Vercel - versión dinámica
+  webpack: (config, { dev, isServer }) => {
+    if (dev) {
+      config.watchOptions = {
+        ignored: ['**/*'],
+      };
+    }
+    return config;
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },
-  reactStrictMode: true,
-  
+  // Optimización de imágenes para Vercel
   images: {
-    unoptimized: true,
-  },
-  
-  serverExternalPackages: ['@prisma/client', 'prisma'],
-  
-  experimental: {
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
-      },
-    },
+    domains: ['localhost'],
+    formats: ['image/webp', 'image/avif'],
   },
 };
 

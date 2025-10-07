@@ -5,246 +5,149 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { usePlayer } from '@/contexts/PlayerContext'
-import { Clock, RotateCcw, Trophy, Sparkles, Brain } from 'lucide-react'
+import { Brain, RotateCcw, Trophy, Clock } from 'lucide-react'
 
-interface Card {
+interface CardData {
   id: number
   content: string
-  type: 'infinitive' | 'past' | 'participle' | 'translation'
-  verbId: number
+  type: 'english' | 'spanish'
+  pairId: number
   isFlipped: boolean
   isMatched: boolean
 }
 
-interface GameVariant {
-  id: string
-  name: string
-  description: string
-  difficulty: 'easy' | 'medium' | 'hard'
-  theme: string
-  cardCount: number
-  timeLimit?: number
-}
-
-const GAME_VARIANTS: GameVariant[] = [
-  {
-    id: 'easy-memory',
-    name: 'Memoria Fácil',
-    description: 'Verbos básicos con traducciones, 12 cartas',
-    difficulty: 'easy',
-    theme: 'basic',
-    cardCount: 12
-  },
-  {
-    id: 'medium-memory',
-    name: 'Memoria Media',
-    description: 'Verbos intermedios en pasado y participio, 20 cartas',
-    difficulty: 'medium',
-    theme: 'mixed',
-    cardCount: 20
-  },
-  {
-    id: 'hard-memory',
-    name: 'Memoria Difícil',
-    description: 'Verbos avanzados e irregulares, 30 cartas',
-    difficulty: 'hard',
-    theme: 'advanced',
-    cardCount: 30
-  }
+const verbPairs = [
+  { english: 'be', spanish: 'ser/estar' },
+  { english: 'have', spanish: 'tener' },
+  { english: 'do', spanish: 'hacer' },
+  { english: 'go', spanish: 'ir' },
+  { english: 'eat', spanish: 'comer' },
+  { english: 'sleep', spanish: 'dormir' },
+  { english: 'study', spanish: 'estudiar' },
+  { english: 'work', spanish: 'trabajar' },
+  { english: 'play', spanish: 'jugar' },
+  { english: 'write', spanish: 'escribir' },
+  { english: 'read', spanish: 'leer' },
+  { english: 'run', spanish: 'correr' }
 ]
 
 export default function MemoryGame() {
-  const { player, updateScore, addExperience, saveGameScore } = usePlayer()
-  const [gameState, setGameState] = useState<'menu' | 'playing' | 'finished'>('menu')
-  const [selectedVariant, setSelectedVariant] = useState<GameVariant | null>(null)
-  const [cards, setCards] = useState<Card[]>([])
-  const [flippedCards, setFlippedCards] = useState<number[]>([])
+  const [cards, setCards] = useState<CardData[]>([])
+  const [selectedCards, setSelectedCards] = useState<number[]>([])
   const [moves, setMoves] = useState(0)
   const [matches, setMatches] = useState(0)
-  const [time, setTime] = useState(0)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [gameVerbs, setGameVerbs] = useState<any[]>([])
+  const [gameStarted, setGameStarted] = useState(false)
+  const [gameCompleted, setGameCompleted] = useState(false)
+  const [timer, setTimer] = useState(0)
+  const [bestScore, setBestScore] = useState<number | null>(null)
 
   useEffect(() => {
     let interval: NodeJS.Timeout
-    if (gameState === 'playing' && !selectedVariant?.timeLimit) {
+    if (gameStarted && !gameCompleted) {
       interval = setInterval(() => {
-        setTime(prev => prev + 1)
+        setTimer(prev => prev + 1)
       }, 1000)
     }
     return () => clearInterval(interval)
-  }, [gameState, selectedVariant])
+  }, [gameStarted, gameCompleted])
 
   useEffect(() => {
-    if (selectedVariant?.timeLimit && time >= selectedVariant.timeLimit) {
-      endGame()
+    const saved = localStorage.getItem('memoryGameBestScore')
+    if (saved) {
+      setBestScore(parseInt(saved))
     }
-  }, [time, selectedVariant])
+  }, [])
 
-  const fetchVerbs = async (variant: GameVariant) => {
-    try {
-      const response = await fetch('/api/verbs')
-      const verbs = await response.json()
-      
-      let filteredVerbs = verbs
-      
-      // Filter by theme and difficulty
-      if (variant.theme === 'basic') {
-        filteredVerbs = verbs.filter((v: any) => v.difficulty === 'easy')
-      } else if (variant.theme === 'mixed') {
-        filteredVerbs = verbs.filter((v: any) => ['easy', 'medium'].includes(v.difficulty))
-      } else if (variant.theme === 'advanced') {
-        // Mix of irregular and hard verbs
-        const irregularVerbs = verbs.filter((v: any) => v.category === 'irregular')
-        const hardVerbs = verbs.filter((v: any) => v.difficulty === 'hard')
-        filteredVerbs = [...irregularVerbs.slice(0, 8), ...hardVerbs.slice(0, 7)]
-      }
-      
-      // Additional difficulty filtering
-      if (variant.difficulty === 'easy') {
-        filteredVerbs = filteredVerbs.filter((v: any) => v.difficulty === 'easy')
-      } else if (variant.difficulty === 'medium') {
-        filteredVerbs = filteredVerbs.filter((v: any) => ['easy', 'medium'].includes(v.difficulty))
-      }
-      
-      // Random selection
-      const shuffled = filteredVerbs.sort(() => Math.random() - 0.5)
-      const selected = shuffled.slice(0, variant.cardCount / 2)
-      
-      setGameVerbs(selected)
-      return selected
-    } catch (error) {
-      console.error('Error fetching verbs:', error)
-      return []
-    }
-  }
+  const initializeGame = () => {
+    const gameCards: CardData[] = []
+    let id = 0
 
-  const initializeGame = async (variant: GameVariant) => {
-    setSelectedVariant(variant)
-    const verbs = await fetchVerbs(variant)
-    
-    const gameCards: Card[] = []
-    let cardId = 0
-
-    verbs.forEach((verb: any) => {
-      // Create pairs based on difficulty
-      if (variant.difficulty === 'easy') {
-        gameCards.push(
-          { id: cardId++, content: verb.infinitive, type: 'infinitive', verbId: verb.id, isFlipped: false, isMatched: false },
-          { id: cardId++, content: verb.translation, type: 'translation', verbId: verb.id, isFlipped: false, isMatched: false }
-        )
-      } else if (variant.difficulty === 'medium') {
-        // Mix of infinitive-translation and past-participle pairs
-        if (Math.random() < 0.5) {
-          gameCards.push(
-            { id: cardId++, content: verb.infinitive, type: 'infinitive', verbId: verb.id, isFlipped: false, isMatched: false },
-            { id: cardId++, content: verb.translation, type: 'translation', verbId: verb.id, isFlipped: false, isMatched: false }
-          )
-        } else {
-          gameCards.push(
-            { id: cardId++, content: verb.past, type: 'past', verbId: verb.id, isFlipped: false, isMatched: false },
-            { id: cardId++, content: verb.participle, type: 'participle', verbId: verb.id, isFlipped: false, isMatched: false }
-          )
-        }
-      } else {
-        // Hard: mix all forms randomly
-        const forms = ['infinitive', 'past', 'participle', 'translation']
-        const form1 = forms[Math.floor(Math.random() * forms.length)]
-        const form2 = forms[Math.floor(Math.random() * forms.length)]
-        
-        gameCards.push(
-          { id: cardId++, content: verb[form1] || verb.infinitive, type: form1 as any, verbId: verb.id, isFlipped: false, isMatched: false },
-          { id: cardId++, content: verb[form2] || verb.translation, type: form2 as any, verbId: verb.id, isFlipped: false, isMatched: false }
-        )
-      }
+    verbPairs.forEach((pair, pairIndex) => {
+      gameCards.push({
+        id: id++,
+        content: pair.english,
+        type: 'english',
+        pairId: pairIndex,
+        isFlipped: false,
+        isMatched: false
+      })
+      gameCards.push({
+        id: id++,
+        content: pair.spanish,
+        type: 'spanish',
+        pairId: pairIndex,
+        isFlipped: false,
+        isMatched: false
+      })
     })
 
-    // Shuffle cards
     const shuffled = gameCards.sort(() => Math.random() - 0.5)
     setCards(shuffled)
-    setGameState('playing')
+    setSelectedCards([])
     setMoves(0)
     setMatches(0)
-    setTime(0)
-    setFlippedCards([])
+    setGameStarted(true)
+    setGameCompleted(false)
+    setTimer(0)
   }
 
   const handleCardClick = (cardId: number) => {
-    if (isProcessing) return
-    if (flippedCards.length === 2) return
-    if (cards.find(c => c.id === cardId)?.isMatched) return
-    if (flippedCards.includes(cardId)) return
+    if (!gameStarted || gameCompleted) return
 
-    // Flip the card
-    setCards(prev => prev.map(card => 
-      card.id === cardId ? { ...card, isFlipped: true } : card
-    ))
+    const card = cards.find(c => c.id === cardId)
+    if (!card || card.isFlipped || card.isMatched) return
+    if (selectedCards.length === 2) return
 
-    const newFlippedCards = [...flippedCards, cardId]
-    setFlippedCards(newFlippedCards)
+    const newCards = cards.map(c =>
+      c.id === cardId ? { ...c, isFlipped: true } : c
+    )
+    setCards(newCards)
 
-    if (newFlippedCards.length === 2) {
-      setIsProcessing(true)
-      setMoves(moves + 1)
-      
-      const [first, second] = newFlippedCards
-      const firstCard = cards.find(c => c.id === first)
-      const secondCard = cards.find(c => c.id === second)
+    const newSelected = [...selectedCards, cardId]
+    setSelectedCards(newSelected)
 
-      if (firstCard && secondCard && firstCard.verbId === secondCard.verbId) {
-        // Match found
-        setTimeout(() => {
-          setCards(prev => prev.map(card => 
-            card.id === first || card.id === second 
-              ? { ...card, isMatched: true }
-              : card
-          ))
-          setMatches(matches + 1)
-          setFlippedCards([])
-          setIsProcessing(false)
-          
-          // Check if game is finished
-          if (matches + 1 === cards.length / 2) {
-            endGame()
-          }
-        }, 1000)
-      } else {
-        // No match - flip cards back
-        setTimeout(() => {
-          setCards(prev => prev.map(card => 
-            card.id === first || card.id === second 
-              ? { ...card, isFlipped: false }
-              : card
-          ))
-          setFlippedCards([])
-          setIsProcessing(false)
-        }, 1500)
-      }
+    if (newSelected.length === 2) {
+      setMoves(prev => prev + 1)
+      checkForMatch(newSelected)
     }
   }
 
-  const endGame = () => {
-    setGameState('finished')
+  const checkForMatch = (selected: number[]) => {
+    const [first, second] = selected.map(id => cards.find(c => c.id === id))
     
-    if (player && selectedVariant) {
-      const score = Math.max(100 - moves + (selectedVariant.timeLimit ? Math.max(0, selectedVariant.timeLimit - time) : Math.max(0, 100 - time)), 10)
-      const accuracy = cards.length > 0 ? (matches / (cards.length / 2)) * 100 : 0
-      
-      updateScore('memory', score)
-      addExperience(Math.floor(score / 10))
-      saveGameScore('memory', score, time, accuracy)
+    if (first && second && first.pairId === second.pairId && first.type !== second.type) {
+      setTimeout(() => {
+        setCards(prev => prev.map(c =>
+          c.id === first.id || c.id === second.id
+            ? { ...c, isMatched: true }
+            : c
+        ))
+        setMatches(prev => {
+          const newMatches = prev + 1
+          if (newMatches === verbPairs.length) {
+            completeGame()
+          }
+          return newMatches
+        })
+        setSelectedCards([])
+      }, 600)
+    } else {
+      setTimeout(() => {
+        setCards(prev => prev.map(c =>
+          selected.includes(c.id) ? { ...c, isFlipped: false } : c
+        ))
+        setSelectedCards([])
+      }, 1000)
     }
   }
 
-  const resetGame = () => {
-    setGameState('menu')
-    setSelectedVariant(null)
-    setCards([])
-    setFlippedCards([])
-    setMoves(0)
-    setMatches(0)
-    setTime(0)
+  const completeGame = () => {
+    setGameCompleted(true)
+    const score = moves
+    if (!bestScore || score < bestScore) {
+      setBestScore(score)
+      localStorage.setItem('memoryGameBestScore', score.toString())
+    }
   }
 
   const formatTime = (seconds: number) => {
@@ -253,153 +156,126 @@ export default function MemoryGame() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'easy': return 'bg-green-100 text-green-800'
-      case 'medium': return 'bg-yellow-100 text-yellow-800'
-      case 'hard': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
+  const progress = (matches / verbPairs.length) * 100
 
-  if (!player) {
-    return (
-      <Card className="w-full max-w-2xl mx-auto">
-        <CardContent className="p-8 text-center">
-          <p className="text-lg">Por favor ingresa tu nombre para jugar</p>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (gameState === 'menu') {
-    return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Brain className="w-6 h-6 text-green-600" />
-              Juego de Memoria de Verbos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-3 gap-6">
-              {GAME_VARIANTS.map(variant => (
-                <Card key={variant.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <CardTitle className="text-lg">{variant.name}</CardTitle>
-                      <Badge className={getDifficultyColor(variant.difficulty)}>
-                        {variant.difficulty === 'easy' ? 'Fácil' : variant.difficulty === 'medium' ? 'Medio' : 'Difícil'}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600 mb-4">{variant.description}</p>
-                    <div className="flex justify-between text-sm text-gray-500 mb-4">
-                      <span>{variant.cardCount} cartas</span>
-                      <span>{variant.cardCount / 2} parejas</span>
-                    </div>
-                    <Button 
-                      onClick={() => initializeGame(variant)} 
-                      className="w-full"
-                    >
-                      Comenzar Juego
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  if (gameState === 'playing') {
-    return (
-      <Card className="w-full max-w-6xl mx-auto">
+  return (
+    <div className="space-y-6">
+      <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-xl">{selectedVariant?.name}</CardTitle>
-            <div className="flex items-center gap-4">
-              <Badge variant="outline">Movimientos: {moves}</Badge>
-              <Badge variant="outline">
-                {selectedVariant?.timeLimit ? `Tiempo: ${selectedVariant.timeLimit - time}s` : `Tiempo: ${formatTime(time)}`}
-              </Badge>
-              <Badge variant="outline">Parejas: {matches}/{cards.length / 2}</Badge>
-              <Button onClick={resetGame} variant="outline" size="sm">
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Salir
-              </Button>
-            </div>
-          </div>
-          {selectedVariant?.timeLimit && (
-            <Progress value={(time / selectedVariant.timeLimit) * 100} className="w-full" />
-          )}
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="w-6 h-6 text-green-600" />
+            Juego de Memoria - Verbos en Inglés
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className={`grid gap-3 ${cards.length <= 12 ? 'grid-cols-4' : cards.length <= 20 ? 'grid-cols-6' : 'grid-cols-8'}`}>
-            {cards.map(card => (
-              <div
-                key={card.id}
-                onClick={() => handleCardClick(card.id)}
-                className={`aspect-square flex items-center justify-center p-2 rounded-lg cursor-pointer transition-all duration-300 transform hover:scale-105 ${
-                  card.isFlipped || card.isMatched
-                    ? card.isMatched 
-                      ? 'bg-green-500 text-white scale-95'
-                      : 'bg-blue-500 text-white'
-                    : 'bg-gray-200 hover:bg-gray-300'
-                }`}
-              >
-                <span className="text-xs font-medium text-center">
-                  {card.isFlipped || card.isMatched ? card.content : '?'}
-                </span>
+          <div className="text-center space-y-4">
+            <p className="text-gray-600">
+              Encuentra las parejas de verbos en inglés y sus traducciones en español.
+              ¡Usa tu memoria para hacer el menor número de movimientos posible!
+            </p>
+
+            {!gameStarted && (
+              <Button onClick={initializeGame} size="lg" className="bg-green-600 hover:bg-green-700">
+                <Brain className="w-5 h-5 mr-2" />
+                Comenzar Juego
+              </Button>
+            )}
+
+            {gameStarted && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
+                <div className="text-center">
+                  <p className="text-sm text-gray-500">Movimientos</p>
+                  <p className="text-2xl font-bold text-blue-600">{moves}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-gray-500">Parejas</p>
+                  <p className="text-2xl font-bold text-green-600">{matches}/{verbPairs.length}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-gray-500">Tiempo</p>
+                  <p className="text-2xl font-bold text-purple-600">{formatTime(timer)}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-gray-500">Mejor Puntuación</p>
+                  <p className="text-2xl font-bold text-yellow-600">{bestScore || '-'}</p>
+                </div>
               </div>
-            ))}
+            )}
+
+            {gameStarted && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Progreso</span>
+                  <span>{Math.round(progress)}%</span>
+                </div>
+                <Progress value={progress} className="h-2" />
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
-    )
-  }
 
-  if (gameState === 'finished') {
-    return (
-      <Card className="w-full max-w-2xl mx-auto">
-        <CardHeader className="text-center">
-          <Trophy className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-          <CardTitle className="text-2xl">¡Juego Completado!</CardTitle>
-        </CardHeader>
-        <CardContent className="text-center space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-600">Movimientos</p>
-              <p className="text-2xl font-bold">{moves}</p>
+      {gameStarted && (
+        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          {cards.map((card) => (
+            <div
+              key={card.id}
+              onClick={() => handleCardClick(card.id)}
+              className={`
+                relative aspect-square cursor-pointer transform transition-all duration-300
+                ${card.isFlipped || card.isMatched ? 'rotate-0' : 'hover:scale-105'}
+                ${card.isMatched ? 'opacity-60' : ''}
+              `}
+            >
+              <div className={`
+                absolute inset-0 rounded-lg transition-all duration-300 transform-gpu
+                ${card.isFlipped || card.isMatched ? 'rotate-y-180' : ''}
+              `} style={{ transformStyle: 'preserve-3d' }}>
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center backface-hidden shadow-lg">
+                  <Brain className="w-8 h-8 text-white" />
+                </div>
+                <div className={`
+                  absolute inset-0 rounded-lg flex items-center justify-center backface-hidden shadow-lg
+                  ${card.type === 'english' 
+                    ? 'bg-gradient-to-br from-green-400 to-green-600' 
+                    : 'bg-gradient-to-br from-orange-400 to-orange-600'}
+                  ${card.isMatched ? 'ring-4 ring-green-400' : ''}
+                `} style={{ transform: 'rotateY(180deg)' }}>
+                  <div className="text-center p-2">
+                    <p className="text-white font-bold text-sm">
+                      {card.content}
+                    </p>
+                    <Badge variant="secondary" className="mt-1 text-xs">
+                      {card.type === 'english' ? 'EN' : 'ES'}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-gray-600">Tiempo</p>
-              <p className="text-2xl font-bold">{formatTime(time)}</p>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Puntuación</p>
-            <p className="text-3xl font-bold text-green-600">
-              {Math.max(100 - moves + (selectedVariant?.timeLimit ? Math.max(0, selectedVariant.timeLimit - time) : Math.max(0, 100 - time)), 10)}
+          ))}
+        </div>
+      )}
+
+      {gameCompleted && (
+        <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+          <CardContent className="text-center py-8">
+            <Trophy className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+            <h3 className="text-2xl font-bold text-green-800 mb-2">¡Felicidades!</h3>
+            <p className="text-gray-700 mb-4">
+              Completaste el juego en {moves} movimientos y {formatTime(timer)}.
             </p>
-          </div>
-          <div className="flex gap-2 justify-center">
-            <Button onClick={() => selectedVariant && initializeGame(selectedVariant)}>
+            {bestScore === moves && (
+              <p className="text-sm text-green-600 font-medium mb-4">
+                ¡Nueva mejor puntuación!
+              </p>
+            )}
+            <Button onClick={initializeGame} className="bg-green-600 hover:bg-green-700">
               <RotateCcw className="w-4 h-4 mr-2" />
               Jugar de Nuevo
             </Button>
-            <Button onClick={resetGame} variant="outline">
-              Otra Variante
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  return null
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
 }

@@ -14,21 +14,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Verbos English - Aprende Verbos en Inglés",
-  description: "¡Aprende verbos en inglés con 70+ juegos divertidos! Memoria, concentración, crucigramas y más.",
-  keywords: ["verbos inglés", "aprender inglés", "juegos educativos", "English verbs", "learning games"],
-  authors: [{ name: "Verbos English Team" }],
+  title: "Z.ai Code Scaffold - AI-Powered Development",
+  description: "Modern Next.js scaffold optimized for AI-powered development with Z.ai. Built with TypeScript, Tailwind CSS, and shadcn/ui.",
+  keywords: ["Z.ai", "Next.js", "TypeScript", "Tailwind CSS", "shadcn/ui", "AI development", "React"],
+  authors: [{ name: "Z.ai Team" }],
   openGraph: {
-    title: "Verbos English - Aprende Verbos en Inglés",
-    description: "¡Aprende verbos en inglés con 70+ juegos divertidos!",
-    url: "https://verbos-english.netlify.app",
-    siteName: "Verbos English",
+    title: "Z.ai Code Scaffold",
+    description: "AI-powered development with modern React stack",
+    url: "https://chat.z.ai",
+    siteName: "Z.ai",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Verbos English",
-    description: "¡Aprende verbos en inglés con 70+ juegos divertidos!",
+    title: "Z.ai Code Scaffold",
+    description: "AI-powered development with modern React stack",
   },
 };
 
