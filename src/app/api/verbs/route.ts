@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Base de datos simulada de verbos
+// Base de datos simulada de verbos - extendida con más verbos y categorías
 const verbsData = [
   {
     id: 1,
@@ -9,7 +9,9 @@ const verbsData = [
     participle: 'been',
     translation: 'ser/estar',
     level: 'basic',
-    irregular: true
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'easy'
   },
   {
     id: 2,
@@ -18,7 +20,9 @@ const verbsData = [
     participle: 'gone',
     translation: 'ir',
     level: 'basic',
-    irregular: true
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'easy'
   },
   {
     id: 3,
@@ -27,7 +31,9 @@ const verbsData = [
     participle: 'had',
     translation: 'tener/haber',
     level: 'basic',
-    irregular: true
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'easy'
   },
   {
     id: 4,
@@ -36,7 +42,9 @@ const verbsData = [
     participle: 'done',
     translation: 'hacer',
     level: 'basic',
-    irregular: true
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'easy'
   },
   {
     id: 5,
@@ -45,7 +53,9 @@ const verbsData = [
     participle: 'said',
     translation: 'decir',
     level: 'basic',
-    irregular: true
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'easy'
   },
   {
     id: 6,
@@ -54,7 +64,9 @@ const verbsData = [
     participle: 'got/gotten',
     translation: 'conseguir/obtener',
     level: 'basic',
-    irregular: true
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'easy'
   },
   {
     id: 7,
@@ -63,7 +75,9 @@ const verbsData = [
     participle: 'made',
     translation: 'hacer/crear',
     level: 'basic',
-    irregular: true
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'easy'
   },
   {
     id: 8,
@@ -72,7 +86,9 @@ const verbsData = [
     participle: 'known',
     translation: 'saber/conocer',
     level: 'basic',
-    irregular: true
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'easy'
   },
   {
     id: 9,
@@ -81,16 +97,20 @@ const verbsData = [
     participle: 'thought',
     translation: 'pensar',
     level: 'basic',
-    irregular: true
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'easy'
   },
   {
     id: 10,
     infinitive: 'take',
     past: 'took',
     participle: 'taken',
-    translation: 'tomar/tomar',
+    translation: 'tomar/llevar',
     level: 'basic',
-    irregular: true
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'easy'
   },
   {
     id: 11,
@@ -99,7 +119,9 @@ const verbsData = [
     participle: 'come',
     translation: 'venir',
     level: 'basic',
-    irregular: true
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'easy'
   },
   {
     id: 12,
@@ -108,7 +130,9 @@ const verbsData = [
     participle: 'seen',
     translation: 'ver',
     level: 'basic',
-    irregular: true
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'easy'
   },
   {
     id: 13,
@@ -117,7 +141,9 @@ const verbsData = [
     participle: 'wanted',
     translation: 'querer',
     level: 'basic',
-    irregular: false
+    irregular: false,
+    category: 'regular',
+    difficulty: 'easy'
   },
   {
     id: 14,
@@ -126,7 +152,9 @@ const verbsData = [
     participle: 'looked',
     translation: 'mirar',
     level: 'basic',
-    irregular: false
+    irregular: false,
+    category: 'regular',
+    difficulty: 'easy'
   },
   {
     id: 15,
@@ -135,7 +163,9 @@ const verbsData = [
     participle: 'used',
     translation: 'usar',
     level: 'basic',
-    irregular: false
+    irregular: false,
+    category: 'regular',
+    difficulty: 'easy'
   },
   {
     id: 16,
@@ -144,7 +174,9 @@ const verbsData = [
     participle: 'found',
     translation: 'encontrar',
     level: 'basic',
-    irregular: true
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'easy'
   },
   {
     id: 17,
@@ -153,7 +185,9 @@ const verbsData = [
     participle: 'given',
     translation: 'dar',
     level: 'basic',
-    irregular: true
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'easy'
   },
   {
     id: 18,
@@ -162,7 +196,9 @@ const verbsData = [
     participle: 'told',
     translation: 'contar/decir',
     level: 'basic',
-    irregular: true
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'easy'
   },
   {
     id: 19,
@@ -171,7 +207,9 @@ const verbsData = [
     participle: 'worked',
     translation: 'trabajar',
     level: 'basic',
-    irregular: false
+    irregular: false,
+    category: 'regular',
+    difficulty: 'easy'
   },
   {
     id: 20,
@@ -180,7 +218,119 @@ const verbsData = [
     participle: 'called',
     translation: 'llamar',
     level: 'basic',
-    irregular: false
+    irregular: false,
+    category: 'regular',
+    difficulty: 'easy'
+  },
+  {
+    id: 21,
+    infinitive: 'write',
+    past: 'wrote',
+    participle: 'written',
+    translation: 'escribir',
+    level: 'intermediate',
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'medium'
+  },
+  {
+    id: 22,
+    infinitive: 'read',
+    past: 'read',
+    participle: 'read',
+    translation: 'leer',
+    level: 'intermediate',
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'medium'
+  },
+  {
+    id: 23,
+    infinitive: 'run',
+    past: 'ran',
+    participle: 'run',
+    translation: 'correr',
+    level: 'intermediate',
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'medium'
+  },
+  {
+    id: 24,
+    infinitive: 'eat',
+    past: 'ate',
+    participle: 'eaten',
+    translation: 'comer',
+    level: 'intermediate',
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'medium'
+  },
+  {
+    id: 25,
+    infinitive: 'drink',
+    past: 'drank',
+    participle: 'drunk',
+    translation: 'beber',
+    level: 'intermediate',
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'medium'
+  },
+  {
+    id: 26,
+    infinitive: 'sleep',
+    past: 'slept',
+    participle: 'slept',
+    translation: 'dormir',
+    level: 'intermediate',
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'medium'
+  },
+  {
+    id: 27,
+    infinitive: 'study',
+    past: 'studied',
+    participle: 'studied',
+    translation: 'estudiar',
+    level: 'intermediate',
+    irregular: false,
+    category: 'regular',
+    difficulty: 'medium'
+  },
+  {
+    id: 28,
+    infinitive: 'play',
+    past: 'played',
+    participle: 'played',
+    translation: 'jugar',
+    level: 'intermediate',
+    irregular: false,
+    category: 'regular',
+    difficulty: 'medium'
+  },
+  {
+    id: 29,
+    infinitive: 'begin',
+    past: 'began',
+    participle: 'begun',
+    translation: 'empezar',
+    level: 'intermediate',
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'medium'
+  },
+  {
+    id: 30,
+    infinitive: 'buy',
+    past: 'bought',
+    participle: 'bought',
+    translation: 'comprar',
+    level: 'intermediate',
+    irregular: true,
+    category: 'irregular',
+    difficulty: 'medium'
   }
 ];
 
@@ -190,12 +340,24 @@ export async function GET(request: NextRequest) {
     const level = searchParams.get('level');
     const limit = searchParams.get('limit');
     const irregular = searchParams.get('irregular');
+    const category = searchParams.get('category');
+    const difficulty = searchParams.get('difficulty');
 
     let filteredVerbs = [...verbsData];
 
     // Filtrar por nivel
     if (level && level !== 'all') {
       filteredVerbs = filteredVerbs.filter(verb => verb.level === level);
+    }
+
+    // Filtrar por categoría
+    if (category && category !== 'all') {
+      filteredVerbs = filteredVerbs.filter(verb => verb.category === category);
+    }
+
+    // Filtrar por dificultad
+    if (difficulty && difficulty !== 'all') {
+      filteredVerbs = filteredVerbs.filter(verb => verb.difficulty === difficulty);
     }
 
     // Filtrar por regulares/irregulares
@@ -211,13 +373,15 @@ export async function GET(request: NextRequest) {
       filteredVerbs = filteredVerbs.slice(0, limitNum);
     }
 
-    // Mezclar aleatoriamente
-    const shuffled = filteredVerbs.sort(() => 0.5 - Math.random());
+    // Mezclar aleatoriamente si no hay filtros específicos
+    if (!level && !category && !difficulty && !irregular) {
+      filteredVerbs = filteredVerbs.sort(() => 0.5 - Math.random());
+    }
 
     return NextResponse.json({
       success: true,
-      data: shuffled,
-      total: shuffled.length,
+      data: filteredVerbs,
+      total: filteredVerbs.length,
       message: 'Verbos cargados exitosamente'
     });
 
@@ -254,6 +418,22 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           message: 'Puntaje guardado exitosamente'
+        });
+
+      case 'add_verb':
+        // Lógica para agregar nuevo verbo
+        const newVerb = {
+          id: verbsData.length + 1,
+          ...data,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        verbsData.push(newVerb);
+        
+        return NextResponse.json({
+          success: true,
+          data: newVerb,
+          message: 'Verbo agregado exitosamente'
         });
 
       default:

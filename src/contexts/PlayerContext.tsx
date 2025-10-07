@@ -1,165 +1,149 @@
-'use client'
+'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 interface Player {
-  id: string
-  name: string
-  avatar?: string
-  level: number
-  experience: number
-  totalGames: number
-  bestScores: {
-    memory: number
-    concentration: number
-    matching: number
-    wordsearch: number
-    crossword: number
-  }
+  name: string;
+  level: number;
+  experience: number;
+  totalGames: number;
+  totalScore: number;
+  bestScore: number;
+  achievements: string[];
+  createdAt: string;
+  lastLoginAt: string;
 }
 
 interface PlayerContextType {
-  player: Player | null
-  setPlayerName: (name: string) => void
-  logout: () => void
-  updateScore: (gameType: string, score: number) => void
-  addExperience: (exp: number) => void
-  saveGameScore: (gameType: string, score: number, timeSpent: number, accuracy: number) => void
-  isLoading: boolean
+  player: Player | null;
+  isLoggedIn: boolean;
+  login: (name: string) => void;
+  logout: () => void;
+  updateStats: (stats: Partial<Player>) => void;
+  addAchievement: (achievementId: string) => void;
 }
 
-const PlayerContext = createContext<PlayerContextType | undefined>(undefined)
+const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 
-export function PlayerProvider({ children }: { children: ReactNode }) {
-  const [player, setPlayer] = useState<Player | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+interface PlayerProviderProps {
+  children: ReactNode;
+}
+
+export function PlayerProvider({ children }: PlayerProviderProps) {
+  const [player, setPlayer] = useState<Player | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if player name is stored in localStorage
-    const storedPlayer = localStorage.getItem('player_data')
-    if (storedPlayer) {
+    // Cargar datos del jugador desde localStorage al iniciar
+    const loadPlayer = () => {
       try {
-        const playerData = JSON.parse(storedPlayer)
-        setPlayer(playerData)
+        const savedPlayer = localStorage.getItem('player');
+        if (savedPlayer) {
+          const parsedPlayer = JSON.parse(savedPlayer);
+          setPlayer(parsedPlayer);
+          
+          // Actualizar último login
+          const updatedPlayer = {
+            ...parsedPlayer,
+            lastLoginAt: new Date().toISOString()
+          };
+          setPlayer(updatedPlayer);
+          localStorage.setItem('player', JSON.stringify(updatedPlayer));
+        }
       } catch (error) {
-        console.error('Error parsing player data:', error)
-        localStorage.removeItem('player_data')
+        console.error('Error loading player data:', error);
+        localStorage.removeItem('player');
+      } finally {
+        setIsLoading(false);
       }
-    }
-    setIsLoading(false)
-  }, [])
+    };
 
-  const setPlayerName = (name: string) => {
-    if (!name || name.trim().length < 2) {
-      return
-    }
+    loadPlayer();
+  }, []);
 
+  const login = (name: string) => {
     const newPlayer: Player = {
-      id: `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: name.trim(),
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name.trim()}`,
       level: 1,
       experience: 0,
       totalGames: 0,
-      bestScores: {
-        memory: 0,
-        concentration: 0,
-        matching: 0,
-        wordsearch: 0,
-        crossword: 0
-      }
-    }
+      totalScore: 0,
+      bestScore: 0,
+      achievements: [],
+      createdAt: new Date().toISOString(),
+      lastLoginAt: new Date().toISOString()
+    };
 
-    setPlayer(newPlayer)
-    localStorage.setItem('player_data', JSON.stringify(newPlayer))
-  }
+    setPlayer(newPlayer);
+    localStorage.setItem('player', JSON.stringify(newPlayer));
+  };
 
   const logout = () => {
-    setPlayer(null)
-    localStorage.removeItem('player_data')
-  }
+    setPlayer(null);
+    localStorage.removeItem('player');
+  };
 
-  const updateScore = (gameType: string, score: number) => {
-    if (!player) return
-
-    const updatedPlayer = {
-      ...player,
-      totalGames: player.totalGames + 1,
-      bestScores: {
-        ...player.bestScores,
-        [gameType]: Math.max(player.bestScores[gameType as keyof typeof player.bestScores] || 0, score)
-      }
-    }
-
-    setPlayer(updatedPlayer)
-    localStorage.setItem('player_data', JSON.stringify(updatedPlayer))
-  }
-
-  const addExperience = (exp: number) => {
-    if (!player) return
-
-    const newExperience = player.experience + exp
-    const newLevel = Math.floor(newExperience / 100) + 1 // 100 exp por nivel
+  const updateStats = (stats: Partial<Player>) => {
+    if (!player) return;
 
     const updatedPlayer = {
       ...player,
-      experience: newExperience,
-      level: newLevel
-    }
+      ...stats,
+      lastLoginAt: new Date().toISOString()
+    };
 
-    setPlayer(updatedPlayer)
-    localStorage.setItem('player_data', JSON.stringify(updatedPlayer))
-  }
+    setPlayer(updatedPlayer);
+    localStorage.setItem('player', JSON.stringify(updatedPlayer));
+  };
 
-  const saveGameScore = (gameType: string, score: number, timeSpent: number, accuracy: number) => {
-    if (!player) {
-      console.log('saveGameScore: No player found')
-      return
-    }
+  const addAchievement = (achievementId: string) => {
+    if (!player) return;
 
-    console.log(`saveGameScore called for ${gameType}: ${score} points, ${timeSpent}s, ${accuracy}% accuracy`)
-    console.log('Player ID:', player.id)
+    if (player.achievements.includes(achievementId)) return;
 
-    // Save detailed score to localStorage for stats
-    const gameScore = {
-      id: `score_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      gameType,
-      score,
-      timeSpent,
-      accuracy,
-      completedAt: new Date().toISOString()
-    }
+    const updatedPlayer = {
+      ...player,
+      achievements: [...player.achievements, achievementId],
+      experience: player.experience + 50, // Bonus de experiencia por logro
+      lastLoginAt: new Date().toISOString()
+    };
 
-    const storageKey = `gameScores_${player.id}`
-    console.log('Saving to key:', storageKey)
-    
-    const existingScores = localStorage.getItem(storageKey)
-    console.log('Existing scores:', existingScores)
-    
-    const scores = existingScores ? JSON.parse(existingScores) : []
-    scores.push(gameScore)
-    localStorage.setItem(storageKey, JSON.stringify(scores))
-    
-    console.log('Updated scores:', JSON.stringify(scores))
+    setPlayer(updatedPlayer);
+    localStorage.setItem('player', JSON.stringify(updatedPlayer));
+  };
 
-    // Also update player's basic stats
-    updateScore(gameType, score)
-    addExperience(Math.floor(score / 10))
+  const value: PlayerContextType = {
+    player,
+    isLoggedIn: !!player,
+    login,
+    logout,
+    updateStats,
+    addAchievement
+  };
 
-    console.log(`Successfully saved score for ${gameType}: ${score} points, ${timeSpent}s, ${accuracy}% accuracy`)
+  // Mostrar loading mientras se carga el jugador
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-lg text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <PlayerContext.Provider value={{ player, setPlayerName, logout, updateScore, addExperience, saveGameScore, isLoading }}>
+    <PlayerContext.Provider value={value}>
       {children}
     </PlayerContext.Provider>
-  )
+  );
 }
 
 export function usePlayer() {
-  const context = useContext(PlayerContext)
+  const context = useContext(PlayerContext);
   if (context === undefined) {
-    throw new Error('usePlayer must be used within a PlayerProvider')
+    throw new Error('usePlayer must be used within a PlayerProvider');
   }
-  return context
+  return context;
 }

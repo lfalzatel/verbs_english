@@ -1,244 +1,291 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { 
   User, 
   Trophy, 
+  Star, 
   Target, 
   Clock, 
-  Star, 
-  LogOut, 
+  TrendingUp, 
+  LogOut,
   Settings,
-  TrendingUp,
-  Award
-} from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
+  Award,
+  Zap,
+  Flame
+} from 'lucide-react';
 
-export default function UserProfile() {
-  const { user, logout } = useAuth()
-  const [showSettings, setShowSettings] = useState(false)
+interface UserProfileProps {
+  playerName: string;
+  onLogout: () => void;
+  onSettings?: () => void;
+}
 
-  if (!user) return null
+interface PlayerStats {
+  level: number;
+  experience: number;
+  totalGames: number;
+  totalScore: number;
+  bestScore: number;
+  averageScore: number;
+  totalTime: number;
+  streak: number;
+  achievements: Achievement[];
+}
+
+interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  unlocked: boolean;
+  unlockedAt?: string;
+}
+
+export default function UserProfile({ playerName, onLogout, onSettings }: UserProfileProps) {
+  const [stats, setStats] = useState<PlayerStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadPlayerStats();
+  }, [playerName]);
+
+  const loadPlayerStats = async () => {
+    try {
+      setLoading(true);
+      
+      // Simular carga de estadísticas del jugador
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Aquí iría la llamada real a la API
+      const mockStats: PlayerStats = {
+        level: 5,
+        experience: 750,
+        totalGames: 23,
+        totalScore: 1850,
+        bestScore: 95,
+        averageScore: 80,
+        totalTime: 1450, // segundos
+        streak: 3,
+        achievements: [
+          {
+            id: 'first_game',
+            name: 'Primer Paso',
+            description: 'Completa tu primer juego',
+            icon: <Star className="w-4 h-4" />,
+            unlocked: true,
+            unlockedAt: new Date().toISOString()
+          },
+          {
+            id: 'memory_master',
+            name: 'Maestro de la Memoria',
+            description: 'Obtén 90+ en Memoria',
+            icon: <Trophy className="w-4 h-4" />,
+            unlocked: true
+          },
+          {
+            id: 'concentration_expert',
+            name: 'Experto en Concentración',
+            description: 'Completa 5 juegos de concentración',
+            icon: <Target className="w-4 h-4" />,
+            unlocked: false
+          },
+          {
+            id: 'streak_warrior',
+            name: 'Guerrero de Rachas',
+            description: 'Mantén una racha de 7 días',
+            icon: <Flame className="w-4 h-4" />,
+            unlocked: false
+          }
+        ]
+      };
+      
+      setStats(mockStats);
+    } catch (error) {
+      console.error('Error loading player stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else {
+      return `${minutes}m`;
+    }
+  };
 
   const getLevelProgress = () => {
-    const currentLevel = user.level
-    const currentLevelXP = (currentLevel - 1) * 100
-    const nextLevelXP = currentLevel * 100
-    const progress = ((user.experience - currentLevelXP) / (nextLevelXP - currentLevelXP)) * 100
-    return Math.min(100, Math.max(0, progress))
+    if (!stats) return 0;
+    const expForNextLevel = stats.level * 200;
+    return (stats.experience / expForNextLevel) * 100;
+  };
+
+  const getLevelColor = (level: number) => {
+    if (level >= 10) return 'bg-purple-500';
+    if (level >= 7) return 'bg-red-500';
+    if (level >= 5) return 'bg-orange-500';
+    if (level >= 3) return 'bg-yellow-500';
+    return 'bg-green-500';
+  };
+
+  if (loading) {
+    return (
+      <Card className="w-full max-w-2xl mx-auto">
+        <CardContent className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Cargando perfil...</p>
+        </CardContent>
+      </Card>
+    );
   }
 
-  const getXPToNextLevel = () => {
-    const nextLevelXP = user.level * 100
-    return Math.max(0, nextLevelXP - user.experience)
+  if (!stats) {
+    return null;
   }
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="w-6 h-6 text-purple-600" />
-            Perfil de Usuario
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-start gap-4">
-            <Avatar className="w-16 h-16">
-              <AvatarImage src={user.avatar || ''} />
-              <AvatarFallback className="bg-purple-100 text-purple-600 text-xl font-bold">
-                {user.displayName.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            
-            <div className="flex-1">
-              <h3 className="text-xl font-bold text-gray-900">{user.displayName}</h3>
-              <p className="text-gray-600">@{user.username}</p>
-              <p className="text-sm text-gray-500">{user.email}</p>
-              
-              <div className="mt-4 flex items-center gap-2">
-                <Badge className="bg-purple-100 text-purple-800">
-                  Nivel {user.level}
-                </Badge>
-                <Badge className="bg-blue-100 text-blue-800">
-                  {user.experience} XP
-                </Badge>
+      {/* Perfil Principal */}
+      <Card className="w-full max-w-2xl mx-auto">
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className={`w-16 h-16 ${getLevelColor(stats.level)} rounded-full flex items-center justify-center text-white font-bold text-xl`}>
+                {playerName.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <CardTitle className="text-2xl">{playerName}</CardTitle>
+                <div className="flex items-center space-x-2 mt-1">
+                  <Badge variant="secondary" className="text-sm">
+                    Nivel {stats.level}
+                  </Badge>
+                  {stats.streak > 0 && (
+                    <Badge variant="outline" className="text-orange-600 border-orange-600">
+                      <Flame className="w-3 h-3 mr-1" />
+                      {stats.streak} días
+                    </Badge>
+                  )}
+                </div>
               </div>
             </div>
-            
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowSettings(!showSettings)}
-              >
-                <Settings className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={logout}
-                className="text-red-600 hover:text-red-700"
-              >
+            <div className="flex space-x-2">
+              {onSettings && (
+                <Button variant="outline" size="sm" onClick={onSettings}>
+                  <Settings className="w-4 h-4" />
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={onLogout}>
                 <LogOut className="w-4 h-4" />
               </Button>
             </div>
           </div>
-          
-          <div className="mt-6">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium">Progreso al Nivel {user.level + 1}</span>
-              <span className="text-sm text-gray-600">{getXPToNextLevel()} XP restantes</span>
+        </CardHeader>
+        
+        <CardContent className="space-y-6">
+          {/* Barra de Experiencia */}
+          <div>
+            <div className="flex justify-between mb-2">
+              <span className="text-sm font-medium">Experiencia</span>
+              <span className="text-sm text-gray-600">
+                {stats.experience} / {stats.level * 200} XP
+              </span>
             </div>
-            <Progress value={getLevelProgress()} className="h-2" />
+            <Progress value={getLevelProgress()} className="h-3" />
+          </div>
+
+          {/* Estadísticas Principales */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center p-3 bg-blue-50 rounded-lg">
+              <Trophy className="w-6 h-6 text-blue-600 mx-auto mb-1" />
+              <p className="text-lg font-bold text-blue-900">{stats.totalGames}</p>
+              <p className="text-xs text-blue-700">Juegos</p>
+            </div>
+            
+            <div className="text-center p-3 bg-green-50 rounded-lg">
+              <Target className="w-6 h-6 text-green-600 mx-auto mb-1" />
+              <p className="text-lg font-bold text-green-900">{stats.bestScore}</p>
+              <p className="text-xs text-green-700">Mejor Puntaje</p>
+            </div>
+            
+            <div className="text-center p-3 bg-yellow-50 rounded-lg">
+              <Zap className="w-6 h-6 text-yellow-600 mx-auto mb-1" />
+              <p className="text-lg font-bold text-yellow-900">{stats.averageScore}</p>
+              <p className="text-xs text-yellow-700">Promedio</p>
+            </div>
+            
+            <div className="text-center p-3 bg-purple-50 rounded-lg">
+              <Clock className="w-6 h-6 text-purple-600 mx-auto mb-1" />
+              <p className="text-lg font-bold text-purple-900">{formatTime(stats.totalTime)}</p>
+              <p className="text-xs text-purple-700">Tiempo Total</p>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="text-center p-4">
-            <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mx-auto mb-2">
-              <Trophy className="w-6 h-6 text-blue-600" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900">{user.totalGames || 0}</p>
-            <p className="text-sm text-gray-600">Juegos Totales</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="text-center p-4">
-            <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mx-auto mb-2">
-              <Target className="w-6 h-6 text-green-600" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900">{user.bestScores ? Math.max(...Object.values(user.bestScores as Record<string, number>)) : 0}</p>
-            <p className="text-sm text-gray-600">Mejor Puntuación</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="text-center p-4">
-            <div className="flex items-center justify-center w-12 h-12 bg-yellow-100 rounded-full mx-auto mb-2">
-              <Star className="w-6 h-6 text-yellow-600" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900">{user.level}</p>
-            <p className="text-sm text-gray-600">Nivel Actual</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="text-center p-4">
-            <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-full mx-auto mb-2">
-              <Award className="w-6 h-6 text-purple-600" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900">0</p>
-            <p className="text-sm text-gray-600">Logros</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
+      {/* Logros */}
+      <Card className="w-full max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="w-6 h-6 text-green-600" />
-            Estadísticas Detalladas
+            <Award className="w-5 h-5 text-yellow-600" />
+            Logros Desbloqueados
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="font-medium text-gray-900 mb-3">Rendimiento por Juego</h4>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Juego de Memoria</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-24 bg-gray-200 rounded-full h-2">
-                      <div className="bg-green-600 h-2 rounded-full" style={{ width: '75%' }}></div>
-                    </div>
-                    <span className="text-sm text-gray-600">75%</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {stats.achievements.map((achievement) => (
+              <div 
+                key={achievement.id}
+                className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+                  achievement.unlocked 
+                    ? 'border-yellow-300 bg-yellow-50' 
+                    : 'border-gray-200 bg-gray-50 opacity-60'
+                }`}
+              >
+                <div className="flex items-start space-x-3">
+                  <div className={`p-2 rounded-full ${
+                    achievement.unlocked ? 'bg-yellow-200 text-yellow-700' : 'bg-gray-200 text-gray-500'
+                  }`}>
+                    {achievement.icon}
                   </div>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Juego de Concentración</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-24 bg-gray-200 rounded-full h-2">
-                      <div className="bg-blue-600 h-2 rounded-full" style={{ width: '60%' }}></div>
-                    </div>
-                    <span className="text-sm text-gray-600">60%</span>
+                  <div className="flex-1">
+                    <h4 className={`font-medium ${
+                      achievement.unlocked ? 'text-gray-900' : 'text-gray-600'
+                    }`}>
+                      {achievement.name}
+                    </h4>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {achievement.description}
+                    </p>
+                    {achievement.unlocked && achievement.unlockedAt && (
+                      <p className="text-xs text-green-600 mt-2">
+                        Desbloqueado: {new Date(achievement.unlockedAt).toLocaleDateString()}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
-            </div>
-            
-            <div>
-              <h4 className="font-medium text-gray-900 mb-3">Información de Cuenta</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Miembro desde:</span>
-                  <span className="font-medium">
-                    {new Date(user.createdAt).toLocaleDateString('es-ES')}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Experiencia total:</span>
-                  <span className="font-medium">{user.experience} XP</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Tasa de éxito:</span>
-                  <span className="font-medium">68%</span>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
+          
+          {stats.achievements.filter(a => a.unlocked).length === 0 && (
+            <div className="text-center py-8">
+              <Award className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-600">
+                ¡Comienza a jugar para desbloquear tus primeros logros!
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
-
-      {showSettings && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="w-6 h-6 text-gray-600" />
-              Configuración
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">Preferencias de Juego</h4>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" defaultChecked />
-                    <span className="text-sm">Efectos de sonido</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" defaultChecked />
-                    <span className="text-sm">Notificaciones de logros</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" />
-                    <span className="text-sm">Modo oscuro</span>
-                  </label>
-                </div>
-              </div>
-              
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">Dificultad Preferida</h4>
-                <select className="w-full p-2 border rounded-md">
-                  <option value="all">Todas</option>
-                  <option value="easy">Fácil</option>
-                  <option value="medium">Media</option>
-                  <option value="hard">Difícil</option>
-                </select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
-  )
+  );
 }

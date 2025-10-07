@@ -1,113 +1,151 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { usePlayer } from '@/contexts/PlayerContext'
-import { User, LogIn, Sparkles } from 'lucide-react'
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { User, Sparkles, Trophy } from 'lucide-react';
 
-export default function PlayerNameForm() {
-  const [playerName, setPlayerName] = useState('')
-  const { setPlayerName: setPlayer, player, logout } = usePlayer()
+interface PlayerNameFormProps {
+  onSubmit: (name: string) => void;
+  initialName?: string;
+}
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (playerName.trim()) {
-      setPlayer(playerName.trim())
+export default function PlayerNameForm({ onSubmit, initialName = '' }: PlayerNameFormProps) {
+  const [playerName, setPlayerName] = useState(initialName);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!playerName.trim()) {
+      return;
     }
-  }
 
-  const handleLogout = () => {
-    logout()
-    setPlayerName('')
-  }
+    setIsSubmitting(true);
+    
+    try {
+      // Simular guardado del nombre
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Guardar en localStorage
+      localStorage.setItem('playerName', playerName.trim());
+      
+      onSubmit(playerName.trim());
+    } catch (error) {
+      console.error('Error saving player name:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-  if (player) {
-    return (
-      <Card className="w-full max-w-md mx-auto">
-        <CardHeader className="text-center">
-          <div className="flex items-center justify-center mb-2">
-            <div className="relative">
-              <img 
-                src={player.avatar} 
-                alt={player.name}
-                className="w-16 h-16 rounded-full border-2 border-primary"
-              />
-              <Badge className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground text-xs">
-                Nivel {player.level}
-              </Badge>
-            </div>
-          </div>
-          <CardTitle className="text-lg">¡Hola, {player.name}!</CardTitle>
-          <CardDescription>
-            Experiencia: {player.experience} XP | Juegos: {player.totalGames}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex justify-center">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-yellow-500" />
-              <span className="text-sm font-medium">
-                Progreso al siguiente nivel: {player.experience % 100}/100 XP
-              </span>
-            </div>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-primary h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(player.experience % 100)}%` }}
-            />
-          </div>
-          <Button 
-            onClick={handleLogout} 
-            variant="outline" 
-            className="w-full"
-          >
-            <LogIn className="w-4 h-4 mr-2" />
-            Cambiar de jugador
-          </Button>
-        </CardContent>
-      </Card>
-    )
-  }
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Permitir solo letras, números y espacios, máximo 20 caracteres
+    const sanitizedValue = value.replace(/[^a-zA-Z0-9\s]/g, '').slice(0, 20);
+    setPlayerName(sanitizedValue);
+  };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader className="text-center">
-        <div className="flex items-center justify-center mb-2">
-          <User className="w-12 h-12 text-primary" />
-        </div>
-        <CardTitle className="text-xl">¡Bienvenido!</CardTitle>
-        <CardDescription>
-          Ingresa tu nombre para comenzar a aprender verbos en inglés
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label htmlFor="name" className="text-sm font-medium">
-              Tu nombre
-            </label>
-            <Input
-              id="name"
-              type="text"
-              placeholder="Ej: María, Carlos, Ana..."
-              value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
-              minLength={2}
-              maxLength={20}
-              className="text-center"
-              autoFocus
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={!playerName.trim()}>
-            <LogIn className="w-4 h-4 mr-2" />
-            Comenzar a jugar
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
-  )
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+          <CardHeader className="text-center pb-4">
+            <div className="flex justify-center mb-4">
+              <div className="relative">
+                <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                  <User className="w-10 h-10 text-white" />
+                </div>
+                <Sparkles className="absolute -top-2 -right-2 w-6 h-6 text-yellow-500" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-bold text-gray-800">
+              ¡Bienvenido a Verbos English!
+            </CardTitle>
+            <CardDescription className="text-gray-600">
+              Ingresa tu nombre para comenzar a aprender verbos en inglés
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="playerName" className="text-sm font-medium text-gray-700">
+                  Tu Nombre
+                </label>
+                <Input
+                  id="playerName"
+                  type="text"
+                  value={playerName}
+                  onChange={handleInputChange}
+                  placeholder="Ej: María, Carlos, Ana..."
+                  className="text-center text-lg py-3 border-2 border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                  maxLength={20}
+                  autoFocus
+                  disabled={isSubmitting}
+                />
+                <p className="text-xs text-gray-500 text-center">
+                  {playerName.length}/20 caracteres
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2 justify-center">
+                <Badge variant="outline" className="text-xs">
+                  <Trophy className="w-3 h-3 mr-1" />
+                  Puntajes guardados
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  Progreso personal
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  <User className="w-3 h-3 mr-1" />
+                  Perfil único
+                </Badge>
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full py-3 text-lg font-semibold bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0 transition-all duration-200 transform hover:scale-105"
+                disabled={!playerName.trim() || isSubmitting}
+              >
+                {isSubmitting ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                    Preparando tu aventura...
+                  </div>
+                ) : (
+                  <div className="flex items-center">
+                    <Sparkles className="w-5 h-5 mr-2" />
+                    Comenzar a Jugar
+                  </div>
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <div className="text-center text-sm text-gray-600">
+                <p className="mb-2">¿Qué encontrarás?</p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-green-50 rounded p-2">
+                    🧠 5 juegos educativos
+                  </div>
+                  <div className="bg-blue-50 rounded p-2">
+                    🎯 3 niveles de dificultad
+                  </div>
+                  <div className="bg-yellow-50 rounded p-2">
+                    📊 Sistema de progreso
+                  </div>
+                  <div className="bg-purple-50 rounded p-2">
+                    🏆 Rankings y logros
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
 }

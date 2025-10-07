@@ -5,8 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Play, Clock, Target, Award, Volume2, RotateCcw, Eye, EyeOff } from 'lucide-react';
+import { Search, Volume2, Play, Clock, Target, Award, ArrowRight, CheckCircle, XCircle } from 'lucide-react';
 
 interface Verb {
   id: number;
@@ -23,71 +24,57 @@ interface GameLevel {
   name: string;
   difficulty: 'easy' | 'medium' | 'hard';
   description: string;
-  cardCount: number;
-  pairsCount: number;
+  wordCount: number;
   points: number;
   timeLimit: number;
   color: string;
 }
 
-interface Card {
-  id: string;
-  content: string;
-  type: 'verb' | 'translation';
-  verbId: number;
-  isFlipped: boolean;
-  isMatched: boolean;
-}
-
 const gameLevels: GameLevel[] = [
   {
     id: 'easy',
-    name: 'Memoria Fácil',
+    name: 'Búsqueda Fácil',
     difficulty: 'easy',
-    description: '12 cartas (6 pares) - Verbos básicos',
-    cardCount: 12,
-    pairsCount: 6,
+    description: 'Verbos básicos - 15 palabras',
+    wordCount: 15,
     points: 10,
     timeLimit: 180,
     color: 'bg-green-50 border-green-200 hover:bg-green-100'
   },
   {
     id: 'medium',
-    name: 'Memoria Medio',
+    name: 'Búsqueda Media',
     difficulty: 'medium',
-    description: '20 cartas (10 pares) - Verbos comunes',
-    cardCount: 20,
-    pairsCount: 10,
+    description: 'Verbos intermedios - 25 palabras',
+    wordCount: 25,
     points: 15,
     timeLimit: 240,
     color: 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
   },
   {
     id: 'hard',
-    name: 'Memoria Difícil',
+    name: 'Búsqueda Difícil',
     difficulty: 'hard',
-    description: '30 cartas (15 pares) - Verbos avanzados',
-    cardCount: 30,
-    pairsCount: 15,
+    description: 'Verbos avanzados - 35 palabras',
+    wordCount: 35,
     points: 20,
     timeLimit: 300,
     color: 'bg-red-50 border-red-200 hover:bg-red-100'
   }
 ];
 
-export default function MemoryGame() {
+export default function VerbSearch() {
   const [verbs, setVerbs] = useState<Verb[]>([]);
   const [selectedLevel, setSelectedLevel] = useState<GameLevel | null>(null);
-  const [cards, setCards] = useState<Card[]>([]);
-  const [flippedCards, setFlippedCards] = useState<string[]>([]);
-  const [matchedPairs, setMatchedPairs] = useState(0);
-  const [moves, setMoves] = useState(0);
+  const [gameVerbs, setGameVerbs] = useState<Verb[]>([]);
+  const [currentVerb, setCurrentVerb] = useState<Verb | null>(null);
+  const [userInput, setUserInput] = useState('');
   const [score, setScore] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
   const [gameCompleted, setGameCompleted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
-  const [showPreview, setShowPreview] = useState(false);
-  const [previewTimeLeft, setPreviewTimeLeft] = useState(0);
+  const [answers, setAnswers] = useState<{verb: Verb, userAnswer: string, correct: boolean}[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -103,23 +90,6 @@ export default function MemoryGame() {
       endGame();
     }
   }, [timeLeft, gameStarted, gameCompleted]);
-
-  useEffect(() => {
-    if (showPreview && previewTimeLeft > 0) {
-      const timer = setTimeout(() => setPreviewTimeLeft(previewTimeLeft - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (previewTimeLeft === 0 && showPreview) {
-      setShowPreview(false);
-      hideAllCards();
-    }
-  }, [previewTimeLeft, showPreview]);
-
-  useEffect(() => {
-    if (flippedCards.length === 2) {
-      const timer = setTimeout(() => checkMatch(), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [flippedCards]);
 
   const fetchVerbs = async () => {
     try {
@@ -138,109 +108,50 @@ export default function MemoryGame() {
     }
   };
 
-  const generateCards = (level: GameLevel): Card[] => {
-    const filteredVerbs = verbs.filter(verb => verb.difficulty === level.difficulty);
-    const selectedVerbs = filteredVerbs.slice(0, level.pairsCount);
-    
-    const gameCards: Card[] = [];
-    
-    selectedVerbs.forEach((verb, index) => {
-      gameCards.push({
-        id: `${verb.id}-verb`,
-        content: verb.infinitive,
-        type: 'verb',
-        verbId: verb.id,
-        isFlipped: false,
-        isMatched: false
-      });
-      
-      gameCards.push({
-        id: `${verb.id}-translation`,
-        content: verb.translation,
-        type: 'translation',
-        verbId: verb.id,
-        isFlipped: false,
-        isMatched: false
-      });
-    });
-    
-    return gameCards.sort(() => Math.random() - 0.5);
-  };
-
   const startGame = (level: GameLevel) => {
     setSelectedLevel(level);
-    const gameCards = generateCards(level);
-    setCards(gameCards);
     setGameStarted(true);
     setScore(0);
-    setMoves(0);
-    setMatchedPairs(0);
+    setCurrentIndex(0);
+    setAnswers([]);
     setTimeLeft(level.timeLimit);
     setGameCompleted(false);
-    setFlippedCards([]);
-    
-    // Show preview of all cards
-    setShowPreview(true);
-    setPreviewTimeLeft(5); // 5 seconds preview
-    setCards(gameCards.map(card => ({ ...card, isFlipped: true })));
-  };
 
-  const hideAllCards = () => {
-    setCards(cards.map(card => ({ ...card, isFlipped: false })));
-  };
-
-  const flipCard = (cardId: string) => {
-    if (showPreview || gameCompleted) return;
-    
-    const card = cards.find(c => c.id === cardId);
-    if (!card || card.isFlipped || card.isMatched) return;
-    
-    if (flippedCards.length < 2) {
-      setCards(cards.map(c => 
-        c.id === cardId ? { ...c, isFlipped: true } : c
-      ));
-      setFlippedCards([...flippedCards, cardId]);
-      setMoves(moves + 1);
-    }
-  };
-
-  const checkMatch = () => {
-    const [first, second] = flippedCards;
-    const firstCard = cards.find(c => c.id === first);
-    const secondCard = cards.find(c => c.id === second);
-    
-    if (firstCard && secondCard && firstCard.verbId === secondCard.verbId) {
-      // Match found
-      setCards(cards.map(c => 
-        c.id === first || c.id === second 
-          ? { ...c, isMatched: true }
-          : c
-      ));
-      setMatchedPairs(matchedPairs + 1);
-      setScore(score + selectedLevel!.points);
-      
-      if (matchedPairs + 1 === selectedLevel!.pairsCount) {
-        endGame();
-      }
-    } else {
-      // No match
-      setCards(cards.map(c => 
-        c.id === first || c.id === second 
-          ? { ...c, isFlipped: false }
-          : c
-      ));
-    }
-    
-    setFlippedCards([]);
+    // Filtrar verbos según la dificultad
+    const filteredVerbs = verbs.filter(verb => verb.difficulty === level.difficulty);
+    const selectedVerbs = filteredVerbs.slice(0, level.wordCount);
+    setGameVerbs(selectedVerbs);
+    setCurrentVerb(selectedVerbs[0]);
   };
 
   const speakText = (text: string) => {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = text.includes(' ') ? 'es-ES' : 'en-US';
+      utterance.lang = 'en-US';
       utterance.rate = 0.8;
       window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const checkAnswer = () => {
+    if (!currentVerb || !userInput.trim()) return;
+
+    const isCorrect = userInput.toLowerCase().trim() === currentVerb.translation.toLowerCase().trim();
+    const newAnswers = [...answers, { verb: currentVerb, userAnswer: userInput, correct: isCorrect }];
+    setAnswers(newAnswers);
+
+    if (isCorrect) {
+      setScore(score + selectedLevel!.points);
+    }
+
+    if (currentIndex < gameVerbs.length - 1) {
+      const nextIndex = currentIndex + 1;
+      setCurrentIndex(nextIndex);
+      setCurrentVerb(gameVerbs[nextIndex]);
+      setUserInput('');
+    } else {
+      endGame();
     }
   };
 
@@ -254,11 +165,10 @@ export default function MemoryGame() {
     setGameStarted(false);
     setGameCompleted(false);
     setScore(0);
-    setMoves(0);
-    setMatchedPairs(0);
-    setCards([]);
-    setFlippedCards([]);
-    setShowPreview(false);
+    setCurrentIndex(0);
+    setAnswers([]);
+    setUserInput('');
+    setCurrentVerb(null);
   };
 
   const formatTime = (seconds: number) => {
@@ -274,12 +184,6 @@ export default function MemoryGame() {
       case 'hard': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
-  };
-
-  const getGridCols = (cardCount: number) => {
-    if (cardCount <= 12) return 'grid-cols-4';
-    if (cardCount <= 20) return 'grid-cols-5';
-    return 'grid-cols-6';
   };
 
   if (loading) {
@@ -302,8 +206,8 @@ export default function MemoryGame() {
     return (
       <div className="space-y-6">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Memoria de Verbos</h2>
-          <p className="text-gray-600">Encuentra los pares de verbos y sus traducciones</p>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Búsqueda de Verbos</h2>
+          <p className="text-gray-600">Selecciona un nivel para comenzar a practicar</p>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -328,7 +232,7 @@ export default function MemoryGame() {
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-1">
                       <Target className="w-4 h-4" />
-                      <span>{level.pairsCount} pares</span>
+                      <span>{level.wordCount} palabras</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Award className="w-4 h-4" />
@@ -341,7 +245,7 @@ export default function MemoryGame() {
                   </div>
                   <Button className="w-full">
                     <Play className="w-4 h-4 mr-2" />
-                    Comenzar Juego
+                    Comenzar Búsqueda
                   </Button>
                 </div>
               </CardContent>
@@ -353,6 +257,9 @@ export default function MemoryGame() {
   }
 
   if (gameCompleted) {
+    const correctAnswers = answers.filter(a => a.correct).length;
+    const accuracy = Math.round((correctAnswers / answers.length) * 100);
+
     return (
       <div className="max-w-2xl mx-auto space-y-6">
         <Card>
@@ -367,17 +274,39 @@ export default function MemoryGame() {
                 <div className="text-sm text-gray-600">Puntos</div>
               </div>
               <div className="bg-blue-50 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{moves}</div>
-                <div className="text-sm text-gray-600">Movimientos</div>
+                <div className="text-2xl font-bold text-blue-600">{correctAnswers}/{answers.length}</div>
+                <div className="text-sm text-gray-600">Correctas</div>
               </div>
               <div className="bg-purple-50 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-purple-600">{matchedPairs}</div>
-                <div className="text-sm text-gray-600">Pares</div>
+                <div className="text-2xl font-bold text-purple-600">{accuracy}%</div>
+                <div className="text-sm text-gray-600">Precisión</div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="font-semibold">Revisión de Respuestas:</h3>
+              <div className="max-h-60 overflow-y-auto space-y-2">
+                {answers.map((answer, index) => (
+                  <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <div className="flex items-center gap-2">
+                      {answer.correct ? 
+                        <CheckCircle className="w-4 h-4 text-green-500" /> : 
+                        <XCircle className="w-4 h-4 text-red-500" />
+                      }
+                      <span className="text-sm">{answer.verb.infinitive}</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-medium">{answer.userAnswer}</div>
+                      {!answer.correct && (
+                        <div className="text-xs text-green-600">{answer.verb.translation}</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
             <Button onClick={resetGame} className="w-full">
-              <RotateCcw className="w-4 h-4 mr-2" />
               Jugar de Nuevo
             </Button>
           </CardContent>
@@ -387,7 +316,7 @@ export default function MemoryGame() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6">
       {/* Game Header */}
       <Card>
         <CardContent className="p-4">
@@ -400,9 +329,6 @@ export default function MemoryGame() {
                 <Target className="w-4 h-4" />
                 <span className="font-semibold">{score} pts</span>
               </div>
-              <div className="text-sm text-gray-600">
-                {moves} movimientos
-              </div>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1 text-sm">
@@ -412,78 +338,71 @@ export default function MemoryGame() {
                 </span>
               </div>
               <div className="text-sm text-gray-600">
-                {matchedPairs}/{selectedLevel.pairsCount} pares
+                {currentIndex + 1}/{gameVerbs.length}
               </div>
             </div>
           </div>
-          <Progress value={(matchedPairs / selectedLevel.pairsCount) * 100} className="mt-2" />
+          <Progress value={(currentIndex / gameVerbs.length) * 100} className="mt-2" />
         </CardContent>
       </Card>
 
-      {/* Preview Alert */}
-      {showPreview && (
-        <Alert className="bg-blue-50 border-blue-200">
-          <Eye className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-blue-800">
-            <strong>Memoriza las cartas:</strong> Tienes {previewTimeLeft} segundos para ver todas las cartas antes de que se den la vuelta.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Game Board */}
-      <Card>
-        <CardContent className="p-6">
-          <div className={`grid ${getGridCols(selectedLevel.cardCount)} gap-3 max-w-4xl mx-auto`}>
-            {cards.map((card) => (
-              <div
-                key={card.id}
-                onClick={() => flipCard(card.id)}
-                className={`relative aspect-square cursor-pointer transition-all duration-300 transform-gpu ${
-                  card.isFlipped || card.isMatched ? 'rotate-0' : 'rotate-y-180'
-                }`}
-              >
-                <div className={`absolute inset-0 rounded-lg transition-all duration-300 ${
-                  card.isFlipped || card.isMatched
-                    ? card.isMatched 
-                      ? 'bg-green-100 border-2 border-green-300' 
-                      : 'bg-white border-2 border-blue-300'
-                    : 'bg-gradient-to-br from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600'
-                }`}>
-                  {card.isFlipped || card.isMatched ? (
-                    <div className="flex items-center justify-center h-full p-2">
-                      <div className="text-center">
-                        <div className="font-semibold text-sm mb-1">
-                          {card.type === 'verb' ? '🇬🇧' : '🇪🇸'}
-                        </div>
-                        <div className="text-sm font-medium">
-                          {card.content}
-                        </div>
-                        {card.type === 'verb' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              speakText(card.content);
-                            }}
-                            className="mt-1 h-6 px-2 text-xs"
-                          >
-                            <Volume2 className="w-3 h-3" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-white text-2xl font-bold">?</div>
-                    </div>
-                  )}
+      {/* Game Content */}
+      {currentVerb && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-center text-xl">
+              Traduce este verbo al español:
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="text-center space-y-4">
+              <div className="bg-gray-50 p-6 rounded-lg">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <h3 className="text-3xl font-bold text-gray-900">{currentVerb.infinitive}</h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => speakText(currentVerb.infinitive)}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    <Volume2 className="w-5 h-5" />
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Pasado: </span>
+                    <span className="font-medium">{currentVerb.past}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Participio: </span>
+                    <span className="font-medium">{currentVerb.participle}</span>
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            </div>
+
+            <div className="space-y-4">
+              <Input
+                placeholder="Escribe la traducción en español..."
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && checkAnswer()}
+                className="text-lg"
+                autoFocus
+              />
+              <Button 
+                onClick={checkAnswer} 
+                className="w-full" 
+                size="lg"
+                disabled={!userInput.trim()}
+              >
+                <ArrowRight className="w-4 h-4 mr-2" />
+                Comprobar Respuesta
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

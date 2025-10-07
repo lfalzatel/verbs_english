@@ -1,633 +1,520 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useRef } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
-import { usePlayer } from '@/contexts/PlayerContext'
-import { Clock, RotateCcw, Trophy, Search, Eye, Grid3X3 } from 'lucide-react'
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Play, Clock, Target, Award, RotateCcw, Search as SearchIcon } from 'lucide-react';
 
-interface WordPosition {
-  word: string
-  startRow: number
-  startCol: number
-  endRow: number
-  endCol: number
-  found: boolean
-  direction: string
+interface Verb {
+  id: number;
+  infinitive: string;
+  past: string;
+  participle: string;
+  translation: string;
+  category: string;
+  difficulty: 'easy' | 'medium' | 'hard';
 }
 
-interface GameVariant {
-  id: string
-  name: string
-  description: string
-  difficulty: 'easy' | 'medium' | 'hard'
-  theme: string
-  gridSize: number
-  timeLimit?: number
-  wordsToFind: number
+interface GameLevel {
+  id: string;
+  name: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  description: string;
+  gridSize: number;
+  wordCount: number;
+  points: number;
+  timeLimit: number;
+  color: string;
 }
 
-const GAME_VARIANTS: GameVariant[] = [
+interface FoundWord {
+  word: string;
+  startRow: number;
+  startCol: number;
+  endRow: number;
+  endCol: number;
+  direction: 'horizontal' | 'vertical' | 'diagonal';
+}
+
+const gameLevels: GameLevel[] = [
   {
-    id: 'easy-wordsearch',
+    id: 'easy',
     name: 'Búsqueda Fácil',
-    description: 'Verbos básicos en cuadrícula pequeña, 15 palabras',
     difficulty: 'easy',
-    theme: 'basic',
-    gridSize: 12,
-    wordsToFind: 15
+    description: '10x10 - 8 verbos',
+    gridSize: 10,
+    wordCount: 8,
+    points: 10,
+    timeLimit: 240,
+    color: 'bg-green-50 border-green-200 hover:bg-green-100'
   },
   {
-    id: 'medium-wordsearch',
+    id: 'medium',
     name: 'Búsqueda Media',
-    description: 'Verbos intermedios en cuadrícula mediana, 25 palabras',
     difficulty: 'medium',
-    theme: 'mixed',
-    gridSize: 16,
-    wordsToFind: 25
+    description: '15x15 - 12 verbos',
+    gridSize: 15,
+    wordCount: 12,
+    points: 15,
+    timeLimit: 300,
+    color: 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
   },
   {
-    id: 'hard-wordsearch',
+    id: 'hard',
     name: 'Búsqueda Difícil',
-    description: 'Verbos avanzados en cuadrícula grande, 35 palabras',
     difficulty: 'hard',
-    theme: 'advanced',
+    description: '20x20 - 15 verbos',
     gridSize: 20,
-    wordsToFind: 35
+    wordCount: 15,
+    points: 20,
+    timeLimit: 360,
+    color: 'bg-red-50 border-red-200 hover:bg-red-100'
   }
-]
+];
 
 export default function WordSearchGame() {
-  const { player, saveGameScore } = usePlayer()
-  const [gameState, setGameState] = useState<'menu' | 'playing' | 'finished'>('menu')
-  const [selectedVariant, setSelectedVariant] = useState<GameVariant | null>(null)
-  const [grid, setGrid] = useState<string[][]>([])
-  const [wordPositions, setWordPositions] = useState<WordPosition[]>([])
-  const [foundWords, setFoundWords] = useState<Set<string>>(new Set())
-  const [selectedCells, setSelectedCells] = useState<[number, number][]>([])
-  const [isSelecting, setIsSelecting] = useState(false)
-  const [time, setTime] = useState(0)
-  const [hints, setHints] = useState(3)
-  const [gameVerbs, setGameVerbs] = useState<any[]>([])
-  const [wordsToPlace, setWordsToPlace] = useState<any[]>([])
-
-  const gridRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout
-    if (gameState === 'playing' && !selectedVariant?.timeLimit) {
-      interval = setInterval(() => {
-        setTime(prev => prev + 1)
-      }, 1000)
-    }
-    return () => clearInterval(interval)
-  }, [gameState, selectedVariant])
+  const [verbs, setVerbs] = useState<Verb[]>([]);
+  const [selectedLevel, setSelectedLevel] = useState<GameLevel | null>(null);
+  const [grid, setGrid] = useState<string[][]>([]);
+  const [wordsToFind, setWordsToFind] = useState<string[]>([]);
+  const [foundWords, setFoundWords] = useState<FoundWord[]>([]);
+  const [selectedCells, setSelectedCells] = useState<{row: number, col: number}[]>([]);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [score, setScore] = useState(0);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [gameCompleted, setGameCompleted] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (selectedVariant?.timeLimit && time >= selectedVariant.timeLimit) {
-      endGame()
-    }
-  }, [time, selectedVariant])
+    fetchVerbs();
+  }, []);
 
   useEffect(() => {
-    const handleGlobalMouseUp = () => {
-      if (isSelecting && selectedCells.length > 1) {
-        checkWord()
-      }
-      setIsSelecting(false)
-      setSelectedCells([])
+    if (gameStarted && timeLeft > 0 && !gameCompleted) {
+      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (timeLeft === 0 && gameStarted && !gameCompleted) {
+      endGame();
     }
+  }, [timeLeft, gameStarted, gameCompleted]);
 
-    document.addEventListener('mouseup', handleGlobalMouseUp)
-    return () => document.removeEventListener('mouseup', handleGlobalMouseUp)
-  }, [isSelecting, selectedCells, wordPositions])
-
-  const fetchVerbs = async (variant: GameVariant) => {
+  const fetchVerbs = async () => {
     try {
-      const response = await fetch('/api/verbs')
-      const verbs = await response.json()
-      
-      let filteredVerbs = verbs
-      
-      // Filter by theme and difficulty
-      if (variant.theme === 'basic') {
-        filteredVerbs = verbs.filter((v: any) => v.difficulty === 'easy')
-      } else if (variant.theme === 'mixed') {
-        filteredVerbs = verbs.filter((v: any) => ['easy', 'medium'].includes(v.difficulty))
-      } else if (variant.theme === 'advanced') {
-        // Mix of irregular and hard verbs
-        const irregularVerbs = verbs.filter((v: any) => v.category === 'irregular')
-        const hardVerbs = verbs.filter((v: any) => v.difficulty === 'hard')
-        filteredVerbs = [...irregularVerbs.slice(0, 15), ...hardVerbs.slice(0, 20)]
+      setLoading(true);
+      const response = await fetch('/api/verbs');
+      if (!response.ok) throw new Error('Failed to fetch verbs');
+      const result = await response.json();
+      if (result.success && result.data) {
+        setVerbs(result.data);
       }
-      
-      // Additional difficulty filtering
-      if (variant.difficulty === 'easy') {
-        filteredVerbs = filteredVerbs.filter((v: any) => v.difficulty === 'easy')
-      } else if (variant.difficulty === 'medium') {
-        filteredVerbs = filteredVerbs.filter((v: any) => ['easy', 'medium'].includes(v.difficulty))
-      }
-      
-      // If filtered results are too small, use all available verbs
-      if (filteredVerbs.length < variant.wordsToFind) {
-        filteredVerbs = verbs
-      }
-      
-      // Ensure we have enough verbs by duplicating if necessary
-      while (filteredVerbs.length < variant.wordsToFind && filteredVerbs.length > 0) {
-        filteredVerbs = [...filteredVerbs, ...verbs]
-      }
-      
-      // Random selection
-      const shuffled = filteredVerbs.sort(() => Math.random() - 0.5)
-      const selected = shuffled.slice(0, variant.wordsToFind)
-      
-      console.log(`Theme: ${variant.theme}, Required: ${variant.wordsToFind}, Available: ${filteredVerbs.length}, Selected: ${selected.length}`)
-      
-      setGameVerbs(selected)
-      return selected
-    } catch (error) {
-      console.error('Error fetching verbs:', error)
-      return []
+    } catch (err) {
+      setError('Error al cargar los verbos');
+      console.error('Error fetching verbs:', err);
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
-  const generateGrid = async (variant: GameVariant) => {
-    const verbs = await fetchVerbs(variant)
-    const size = variant.gridSize
-    const newGrid: string[][] = Array(size).fill(null).map(() => Array(size).fill(''))
-    const wordPositions: WordPosition[] = []
+  const generateGrid = (level: GameLevel) => {
+    const filteredVerbs = verbs.filter(verb => verb.difficulty === level.difficulty);
+    const selectedVerbs = filteredVerbs.slice(0, level.wordCount);
+    const words = selectedVerbs.map(verb => verb.infinitive.toUpperCase());
+    
+    // Create empty grid
+    const newGrid: string[][] = Array(level.gridSize).fill(null).map(() =>
+      Array(level.gridSize).fill('')
+    );
 
-    // Get words to place
-    const newWordsToPlace = verbs.map((verb: any) => {
-      if (variant.theme === 'basic') {
-        return verb.infinitive.toUpperCase()
-      } else if (variant.theme === 'mixed') {
-        // Mix between infinitive and past
-        if (Math.random() < 0.6) {
-          return verb.infinitive.toUpperCase()
-        } else {
-          return verb.past ? verb.past.toUpperCase() : verb.infinitive.toUpperCase()
-        }
-      } else if (variant.theme === 'advanced') {
-        // Mix of all forms randomly
-        const forms = ['infinitive', 'past', 'participle']
-        const selectedForm = forms[Math.floor(Math.random() * forms.length)]
-        return (verb[selectedForm] || verb.infinitive).toUpperCase()
-      } else {
-        return verb.infinitive.toUpperCase()
-      }
-    })
-
-    // Update state
-    setWordsToPlace(newWordsToPlace)
-
-    // Sort words by length (longer first) for better placement
-    newWordsToPlace.sort((a, b) => b.length - a.length)
-
-    // Place words in grid with improved algorithm
-    newWordsToPlace.forEach((originalWord, wordIndex) => {
-      let placed = false
-      let attempts = 0
-      let word = originalWord
+    // Place words in grid
+    const placedWords: FoundWord[] = [];
+    words.forEach(word => {
+      let placed = false;
+      let attempts = 0;
       
-      while (!placed && attempts < 200) {
-        const direction = Math.random() < 0.5 ? 'horizontal' : 'vertical'
-        const reverse = variant.theme === 'reverse' ? false : Math.random() < 0.3
+      while (!placed && attempts < 50) {
+        const direction = Math.random() < 0.33 ? 'horizontal' : Math.random() < 0.5 ? 'vertical' : 'diagonal';
+        const startRow = Math.floor(Math.random() * level.gridSize);
+        const startCol = Math.floor(Math.random() * level.gridSize);
         
-        if (reverse) {
-          word = word.split('').reverse().join('')
+        if (canPlaceWord(newGrid, word, startRow, startCol, direction, level.gridSize)) {
+          placeWord(newGrid, word, startRow, startCol, direction);
+          placedWords.push({
+            word,
+            startRow,
+            startCol,
+            endRow: direction === 'horizontal' ? startRow : direction === 'vertical' ? startRow + word.length - 1 : startRow + word.length - 1,
+            endCol: direction === 'horizontal' ? startCol + word.length - 1 : direction === 'vertical' ? startCol : startCol + word.length - 1,
+            direction
+          });
+          placed = true;
         }
-        
-        if (direction === 'horizontal') {
-          const row = Math.floor(Math.random() * size)
-          const col = Math.floor(Math.random() * (size - word.length + 1))
-          
-          // Check if can place
-          let canPlace = true
-          for (let i = 0; i < word.length; i++) {
-            if (newGrid[row][col + i] !== '' && newGrid[row][col + i] !== word[i]) {
-              canPlace = false
-              break
-            }
-          }
-          
-          if (canPlace) {
-            for (let i = 0; i < word.length; i++) {
-              newGrid[row][col + i] = word[i]
-            }
-            wordPositions.push({
-              word: originalWord, // Keep original word for display
-              startRow: row,
-              startCol: col,
-              endRow: row,
-              endCol: col + word.length - 1,
-              found: false,
-              direction: 'horizontal'
-            })
-            placed = true
-            console.log(`Placed word "${originalWord}" horizontally at ${row},${col}`)
-          }
-        } else {
-          const row = Math.floor(Math.random() * (size - word.length + 1))
-          const col = Math.floor(Math.random() * size)
-          
-          // Check if can place
-          let canPlace = true
-          for (let i = 0; i < word.length; i++) {
-            if (newGrid[row + i][col] !== '' && newGrid[row + i][col] !== word[i]) {
-              canPlace = false
-              break
-            }
-          }
-          
-          if (canPlace) {
-            for (let i = 0; i < word.length; i++) {
-              newGrid[row + i][col] = word[i]
-            }
-            wordPositions.push({
-              word: originalWord, // Keep original word for display
-              startRow: row,
-              startCol: col,
-              endRow: row + word.length - 1,
-              endCol: col,
-              found: false,
-              direction: 'vertical'
-            })
-            placed = true
-            console.log(`Placed word "${originalWord}" vertically at ${row},${col}`)
-          }
-        }
-        
-        attempts++
+        attempts++;
       }
-      
-      if (!placed) {
-        console.warn(`Failed to place word "${originalWord}" after ${attempts} attempts`)
-      }
-    })
+    });
 
     // Fill empty cells with random letters
-    for (let i = 0; i < size; i++) {
-      for (let j = 0; j < size; j++) {
+    for (let i = 0; i < level.gridSize; i++) {
+      for (let j = 0; j < level.gridSize; j++) {
         if (newGrid[i][j] === '') {
-          newGrid[i][j] = String.fromCharCode(65 + Math.floor(Math.random() * 26))
+          newGrid[i][j] = String.fromCharCode(65 + Math.floor(Math.random() * 26));
         }
       }
     }
 
-    console.log(`Generated grid with ${wordPositions.length} words out of ${newWordsToPlace.length} requested`)
-    setGrid(newGrid)
-    setWordPositions(wordPositions)
-    setFoundWords(new Set())
-  }
+    setGrid(newGrid);
+    setWordsToFind(words);
+  };
 
-  const startGame = async (variant: GameVariant) => {
-    console.log('Starting game with variant:', variant)
-    setSelectedVariant(variant)
-    await generateGrid(variant)
-    setGameState('playing')
-    setFoundWords(new Set())
-    setSelectedCells([])
-    setTime(0)
-    setHints(3)
-  }
+  const canPlaceWord = (grid: string[][], word: string, startRow: number, startCol: number, direction: string, gridSize: number) => {
+    if (direction === 'horizontal' && startCol + word.length > gridSize) return false;
+    if (direction === 'vertical' && startRow + word.length > gridSize) return false;
+    if (direction === 'diagonal' && startRow + word.length > gridSize || startCol + word.length > gridSize) return false;
 
-  const handleCellMouseDown = (row: number, col: number) => {
-    setIsSelecting(true)
-    setSelectedCells([[row, col]])
-  }
+    for (let i = 0; i < word.length; i++) {
+      const row = direction === 'horizontal' ? startRow : direction === 'vertical' ? startRow + i : startRow + i;
+      const col = direction === 'horizontal' ? startCol + i : direction === 'vertical' ? startCol : startCol + i;
+      
+      if (grid[row][col] !== '' && grid[row][col] !== word[i]) {
+        return false;
+      }
+    }
+    return true;
+  };
 
-  const handleCellMouseEnter = (row: number, col: number) => {
+  const placeWord = (grid: string[][], word: string, startRow: number, startCol: number, direction: string) => {
+    for (let i = 0; i < word.length; i++) {
+      const row = direction === 'horizontal' ? startRow : direction === 'vertical' ? startRow + i : startRow + i;
+      const col = direction === 'horizontal' ? startCol + i : direction === 'vertical' ? startCol : startCol + i;
+      grid[row][col] = word[i];
+    }
+  };
+
+  const startGame = (level: GameLevel) => {
+    setSelectedLevel(level);
+    setGameStarted(true);
+    setScore(0);
+    setTimeLeft(level.timeLimit);
+    setGameCompleted(false);
+    setFoundWords([]);
+    setSelectedCells([]);
+    setIsSelecting(false);
+    
+    generateGrid(level);
+  };
+
+  const handleMouseDown = (row: number, col: number) => {
+    setIsSelecting(true);
+    setSelectedCells([{row, col}]);
+  };
+
+  const handleMouseEnter = (row: number, col: number) => {
     if (isSelecting) {
       setSelectedCells(prev => {
-        const exists = prev.some(([r, c]) => r === row && c === col)
+        const exists = prev.some(cell => cell.row === row && cell.col === col);
         if (!exists) {
-          return [...prev, [row, col]]
+          return [...prev, {row, col}];
         }
-        return prev
-      })
+        return prev;
+      });
     }
-  }
+  };
 
   const handleMouseUp = () => {
     if (isSelecting && selectedCells.length > 1) {
-      checkWord()
+      checkWord();
     }
-    setIsSelecting(false)
-    setSelectedCells([])
-  }
+    setIsSelecting(false);
+    setSelectedCells([]);
+  };
 
   const checkWord = () => {
-    const [startRow, startCol] = selectedCells[0]
-    const [endRow, endCol] = selectedCells[selectedCells.length - 1]
-    
-    // Check if selection forms a straight line
-    const isHorizontal = startRow === endRow
-    const isVertical = startCol === endCol
-    
-    if (!isHorizontal && !isVertical) return
-    
-    // Get the selected word
-    let selectedWord = ''
-    if (isHorizontal) {
-      const minCol = Math.min(startCol, endCol)
-      const maxCol = Math.max(startCol, endCol)
-      for (let col = minCol; col <= maxCol; col++) {
-        selectedWord += grid[startRow][col]
-      }
-    } else {
-      const minRow = Math.min(startRow, endRow)
-      const maxRow = Math.max(startRow, endRow)
-      for (let row = minRow; row <= maxRow; row++) {
-        selectedWord += grid[row][startCol]
-      }
-    }
-    
-    // Check if matches any word
-    const foundWord = wordPositions.find(w => 
-      !foundWords.has(w.word) && (
-        w.word === selectedWord || 
-        w.word === selectedWord.split('').reverse().join('')
-      )
-    )
-    
-    if (foundWord) {
-      setFoundWords(prev => new Set([...prev, foundWord.word]))
-      setWordPositions(prev => prev.map(w => 
-        w.word === foundWord.word ? { ...w, found: true } : w
-      ))
-      
-      // Check if game is finished
-      if (foundWords.size + 1 === wordPositions.length) {
-        endGame()
-      }
-    }
-  }
+    if (selectedCells.length < 2) return;
 
-  const useHint = () => {
-    if (hints <= 0) return
+    const word = selectedCells.map(cell => grid[cell.row][cell.col]).join('');
+    const reversedWord = word.split('').reverse().join('');
     
-    const unfoundWords = wordsToPlace.filter(w => !foundWords.has(w.word))
-    if (unfoundWords.length === 0) return
+    const foundWord = wordsToFind.find(w => w === word || w === reversedWord);
     
-    const hintWord = unfoundWords[Math.floor(Math.random() * unfoundWords.length)]
-    setHints(hints - 1)
-    
-    // Highlight the first letter of the hint word
-    const cells = document.querySelectorAll(`[data-row="${hintWord.startRow}"][data-col="${hintWord.startCol}"]`)
-    cells.forEach(cell => {
-      cell.classList.add('bg-yellow-200')
-      setTimeout(() => {
-        cell.classList.remove('bg-yellow-200')
-      }, 2000)
-    })
-  }
+    if (foundWord && !foundWords.some(fw => fw.word === foundWord)) {
+      const newFoundWord: FoundWord = {
+        word: foundWord,
+        startRow: selectedCells[0].row,
+        startCol: selectedCells[0].col,
+        endRow: selectedCells[selectedCells.length - 1].row,
+        endCol: selectedCells[selectedCells.length - 1].col,
+        direction: selectedCells[0].row === selectedCells[selectedCells.length - 1].row ? 'horizontal' :
+                  selectedCells[0].col === selectedCells[selectedCells.length - 1].col ? 'vertical' : 'diagonal'
+      };
+      
+      setFoundWords([...foundWords, newFoundWord]);
+      setScore(score + selectedLevel!.points);
+      
+      if (foundWords.length + 1 === wordsToFind.length) {
+        endGame();
+      }
+    }
+  };
+
+  const isCellInFoundWord = (row: number, col: number) => {
+    return foundWords.some(fw => {
+      if (fw.direction === 'horizontal') {
+        return row === fw.startRow && col >= fw.startCol && col <= fw.endCol;
+      } else if (fw.direction === 'vertical') {
+        return col === fw.startCol && row >= fw.startRow && row <= fw.endRow;
+      } else {
+        const minRow = Math.min(fw.startRow, fw.endRow);
+        const maxRow = Math.max(fw.startRow, fw.endRow);
+        const minCol = Math.min(fw.startCol, fw.endCol);
+        const maxCol = Math.max(fw.startCol, fw.endCol);
+        return row >= minRow && row <= maxRow && col >= minCol && col <= maxCol;
+      }
+    });
+  };
+
+  const isCellSelected = (row: number, col: number) => {
+    return selectedCells.some(cell => cell.row === row && cell.col === col);
+  };
 
   const endGame = () => {
-    setGameState('finished')
-    
-    if (player && selectedVariant) {
-      const foundCount = foundWords.size
-      const totalWords = wordPositions.length
-      const accuracy = totalWords > 0 ? (foundCount / totalWords) * 100 : 0
-      const timeBonus = selectedVariant.timeLimit ? Math.max(0, selectedVariant.timeLimit - time) : Math.max(0, 300 - time)
-      const hintBonus = hints * 10
-      const score = Math.floor((foundCount * 50) + (accuracy * 20) + timeBonus + hintBonus)
-      
-      saveGameScore('wordsearch', score, time, accuracy)
-    }
-  }
+    setGameCompleted(true);
+    setGameStarted(false);
+  };
 
   const resetGame = () => {
-    setGameState('menu')
-    setSelectedVariant(null)
-    setGrid([])
-    setWordPositions([])
-    setFoundWords(new Set())
-    setSelectedCells([])
-    setTime(0)
-    setHints(3)
-  }
+    setSelectedLevel(null);
+    setGameStarted(false);
+    setGameCompleted(false);
+    setScore(0);
+    setGrid([]);
+    setWordsToFind([]);
+    setFoundWords([]);
+    setSelectedCells([]);
+    setIsSelecting(false);
+  };
 
   const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'easy': return 'bg-green-100 text-green-800'
-      case 'medium': return 'bg-yellow-100 text-yellow-800'
-      case 'hard': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'easy': return 'bg-green-100 text-green-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'hard': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
-  }
+  };
 
-  const isCellInFoundWord = (row: number, col: number) => {
-    return wordPositions.some(w => 
-      foundWords.has(w.word) && (
-        (w.direction === 'horizontal' && w.startRow === row && col >= w.startCol && col <= w.endCol) ||
-        (w.direction === 'vertical' && w.startCol === col && row >= w.startRow && row <= w.endRow)
-      )
-    )
-  }
-
-  const isCellSelected = (row: number, col: number) => {
-    return selectedCells.some(([r, c]) => r === row && c === col)
-  }
-
-  if (!player) {
+  if (loading) {
     return (
-      <Card className="w-full max-w-2xl mx-auto">
-        <CardContent className="p-8 text-center">
-          <p className="text-lg">Por favor ingresa tu nombre para jugar</p>
-        </CardContent>
-      </Card>
-    )
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+      </div>
+    );
   }
 
-  if (gameState === 'menu') {
+  if (error) {
+    return (
+      <Alert className="max-w-md mx-auto">
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (!selectedLevel) {
     return (
       <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Search className="w-6 h-6 text-orange-600" />
-              Búsqueda de Palabras de Verbos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-3 gap-6">
-              {GAME_VARIANTS.map(variant => (
-                <Card key={variant.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <CardTitle className="text-lg">{variant.name}</CardTitle>
-                      <Badge className={getDifficultyColor(variant.difficulty)}>
-                        {variant.difficulty === 'easy' ? 'Fácil' : variant.difficulty === 'medium' ? 'Medio' : 'Difícil'}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600 mb-4">{variant.description}</p>
-                    <div className="flex justify-between text-sm text-gray-500 mb-4">
-                      <span>{variant.gridSize}×{variant.gridSize}</span>
-                      <span>{variant.wordsToFind} palabras</span>
-                    </div>
-                    <Button 
-                      onClick={() => startGame(variant)} 
-                      className="w-full"
-                    >
-                      Comenzar Búsqueda
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  if (gameState === 'playing') {
-    return (
-      <Card className="w-full max-w-6xl mx-auto">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-xl">{selectedVariant?.name}</CardTitle>
-            <div className="flex items-center gap-4">
-              <Badge variant="outline">Encontradas: {foundWords.size}/{wordPositions.length}</Badge>
-              <Badge variant="outline">
-                {selectedVariant?.timeLimit ? `Tiempo: ${selectedVariant.timeLimit - time}s` : `Tiempo: ${formatTime(time)}`}
-              </Badge>
-              <Badge variant="outline">Pistas: {hints}</Badge>
-              <Button onClick={useHint} disabled={hints === 0} variant="outline" size="sm">
-                <Eye className="w-4 h-4 mr-2" />
-                Pista
-              </Button>
-              <Button onClick={resetGame} variant="outline" size="sm">
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Salir
-              </Button>
-            </div>
-          </div>
-          {selectedVariant?.timeLimit && (
-            <Progress value={(time / selectedVariant.timeLimit) * 100} className="w-full" />
-          )}
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-8">
-            {/* Grid */}
-            <div 
-              ref={gridRef}
-              className="select-none"
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Búsqueda de Palabras</h2>
+          <p className="text-gray-600">Encuentra verbos escondidos en la cuadrícula</p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {gameLevels.map((level) => (
+            <Card 
+              key={level.id} 
+              className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${level.color}`}
+              onClick={() => startGame(level)}
             >
-              <div 
-                className="inline-block border-2 border-gray-300"
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: `repeat(${selectedVariant?.gridSize}, 1fr)`,
-                  gap: '1px',
-                  backgroundColor: '#e5e7eb'
-                }}
-              >
-                {grid.map((row, rowIndex) =>
-                  row.map((cell, colIndex) => (
-                    <div
-                      key={`${rowIndex}-${colIndex}`}
-                      data-row={rowIndex}
-                      data-col={colIndex}
-                      className={`w-8 h-8 flex items-center justify-center text-sm font-bold cursor-pointer transition-colors ${
-                        isCellInFoundWord(rowIndex, colIndex)
-                          ? 'bg-green-200 text-green-800'
-                          : isCellSelected(rowIndex, colIndex)
-                          ? 'bg-blue-200 text-blue-800'
-                          : 'bg-white hover:bg-gray-100'
-                      }`}
-                      onMouseDown={() => handleCellMouseDown(rowIndex, colIndex)}
-                      onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}
-                    >
-                      {cell}
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>{level.name}</span>
+                  <Badge className={getDifficultyColor(level.difficulty)}>
+                    {level.difficulty === 'easy' ? 'Fácil' : 
+                     level.difficulty === 'medium' ? 'Media' : 'Difícil'}
+                  </Badge>
+                </CardTitle>
+                <CardDescription>{level.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-1">
+                      <SearchIcon className="w-4 h-4" />
+                      <span>{level.wordCount} palabras</span>
                     </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Words List */}
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold mb-4">Palabras a encontrar:</h3>
-              <div className="space-y-2">
-                {wordPositions.map((word, index) => (
-                  <div
-                    key={index}
-                    className={`p-2 rounded transition-all ${
-                      foundWords.has(word.word)
-                        ? 'bg-green-100 text-green-800 line-through'
-                        : 'bg-gray-100'
-                    }`}
-                  >
-                    {word.word}
+                    <div className="flex items-center gap-1">
+                      <Award className="w-4 h-4" />
+                      <span>{level.points} pts</span>
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    )
+                  <div className="flex items-center gap-1 text-sm">
+                    <Clock className="w-4 h-4" />
+                    <span>{formatTime(level.timeLimit)}</span>
+                  </div>
+                  <Button className="w-full">
+                    <Play className="w-4 h-4 mr-2" />
+                    Comenzar Búsqueda
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
   }
 
-  if (gameState === 'finished') {
-    const accuracy = wordPositions.length > 0 ? Math.round((foundWords.size / wordPositions.length) * 100) : 0
-    
+  if (gameCompleted) {
     return (
-      <Card className="w-full max-w-2xl mx-auto">
-        <CardHeader className="text-center">
-          <Trophy className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-          <CardTitle className="text-2xl">¡Búsqueda Completada!</CardTitle>
-        </CardHeader>
-        <CardContent className="text-center space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-600">Palabras Encontradas</p>
-              <p className="text-2xl font-bold">{foundWords.size}/{wordPositions.length}</p>
+      <div className="max-w-2xl mx-auto space-y-6">
+        <Card>
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">¡Búsqueda Completada!</CardTitle>
+            <CardDescription>Resultados de {selectedLevel.name}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-2 gap-4 text-center">
+              <div className="bg-green-50 p-4 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">{score}</div>
+                <div className="text-sm text-gray-600">Puntos</div>
+              </div>
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">
+                  {foundWords.length}/{wordsToFind.length}
+                </div>
+                <div className="text-sm text-gray-600">Palabras Encontradas</div>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-gray-600">Precisión</p>
-              <p className="text-2xl font-bold">{accuracy}%</p>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Tiempo</p>
-            <p className="text-xl font-bold">{formatTime(time)}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Puntuación</p>
-            <p className="text-3xl font-bold text-green-600">
-              {Math.floor((foundWords.size * 50) + (accuracy * 20) + (selectedVariant?.timeLimit ? Math.max(0, selectedVariant.timeLimit - time) : Math.max(0, 300 - time)) + (hints * 10))}
-            </p>
-          </div>
-          <div className="flex gap-2 justify-center">
-            <Button onClick={() => selectedVariant && startGame(selectedVariant)}>
+
+            <Button onClick={resetGame} className="w-full">
               <RotateCcw className="w-4 h-4 mr-2" />
               Jugar de Nuevo
             </Button>
-            <Button onClick={resetGame} variant="outline">
-              Otra Variante
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    )
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
-  return null
+  return (
+    <div className="space-y-6">
+      {/* Game Header */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Badge className={getDifficultyColor(selectedLevel.difficulty)}>
+                {selectedLevel.name}
+              </Badge>
+              <div className="flex items-center gap-1">
+                <Target className="w-4 h-4" />
+                <span className="font-semibold">{score} pts</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1 text-sm">
+                <Clock className="w-4 h-4" />
+                <span className={timeLeft < 30 ? 'text-red-600 font-bold' : ''}>
+                  {formatTime(timeLeft)}
+                </span>
+              </div>
+              <div className="text-sm text-gray-600">
+                {foundWords.length}/{wordsToFind.length}
+              </div>
+            </div>
+          </div>
+          <Progress value={(foundWords.length / wordsToFind.length) * 100} className="mt-2" />
+        </CardContent>
+      </Card>
+
+      {/* Game Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Word Search Grid */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Busca las palabras</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div 
+                className="inline-block select-none"
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+              >
+                <div 
+                  className="grid gap-1 p-2 bg-gray-50 rounded"
+                  style={{gridTemplateColumns: `repeat(${selectedLevel.gridSize}, minmax(0, 1fr))`}}
+                >
+                  {grid.map((row, rowIndex) =>
+                    row.map((cell, colIndex) => (
+                      <div
+                        key={`${rowIndex}-${colIndex}`}
+                        onMouseDown={() => handleMouseDown(rowIndex, colIndex)}
+                        onMouseEnter={() => handleMouseEnter(rowIndex, colIndex)}
+                        className={`w-6 h-6 border border-gray-300 flex items-center justify-center text-xs font-bold cursor-pointer transition-colors ${
+                          isCellInFoundWord(rowIndex, colIndex)
+                            ? 'bg-green-200 text-green-800'
+                            : isCellSelected(rowIndex, colIndex)
+                              ? 'bg-blue-200 text-blue-800'
+                              : 'bg-white hover:bg-gray-100'
+                        }`}
+                      >
+                        {cell}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Words to Find */}
+        <div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Palabras a encontrar</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {wordsToFind.map((word, index) => {
+                  const found = foundWords.some(fw => fw.word === word);
+                  return (
+                    <div
+                      key={index}
+                      className={`p-2 rounded text-center font-medium transition-colors ${
+                        found 
+                          ? 'bg-green-100 text-green-800 line-through' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {word}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
 }

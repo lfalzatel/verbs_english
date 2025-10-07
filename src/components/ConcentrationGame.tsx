@@ -1,390 +1,472 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
-import { Trophy, Clock, Target, Zap, RotateCcw } from 'lucide-react'
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Play, Clock, Target, Award, Volume2, RotateCcw, CheckCircle } from 'lucide-react';
 
-interface Question {
-  id: number
-  english: string
-  spanish: string
-  options: string[]
-  correct: string
+interface Verb {
+  id: number;
+  infinitive: string;
+  past: string;
+  participle: string;
+  translation: string;
+  category: string;
+  difficulty: 'easy' | 'medium' | 'hard';
 }
 
-const questions: Question[] = [
+interface GameLevel {
+  id: string;
+  name: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  description: string;
+  questionCount: number;
+  points: number;
+  timeLimit: number;
+  color: string;
+}
+
+interface Question {
+  verb: Verb;
+  questionType: 'infinitive' | 'past' | 'participle';
+  correctAnswer: string;
+  options: string[];
+}
+
+const gameLevels: GameLevel[] = [
   {
-    id: 1,
-    english: 'to be',
-    spanish: 'ser/estar',
-    options: ['tener', 'ser/estar', 'hacer', 'ir'],
-    correct: 'ser/estar'
+    id: 'easy',
+    name: 'Concentración Fácil',
+    difficulty: 'easy',
+    description: 'Verbos básicos - 10 preguntas',
+    questionCount: 10,
+    points: 10,
+    timeLimit: 240,
+    color: 'bg-green-50 border-green-200 hover:bg-green-100'
   },
   {
-    id: 2,
-    english: 'to have',
-    spanish: 'tener',
-    options: ['tener', 'ser', 'hacer', 'comer'],
-    correct: 'tener'
+    id: 'medium',
+    name: 'Concentración Media',
+    difficulty: 'medium',
+    description: 'Tiempos mixtos - 15 preguntas',
+    questionCount: 15,
+    points: 15,
+    timeLimit: 300,
+    color: 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
   },
   {
-    id: 3,
-    english: 'to do',
-    spanish: 'hacer',
-    options: ['jugar', 'trabajar', 'hacer', 'estudiar'],
-    correct: 'hacer'
-  },
-  {
-    id: 4,
-    english: 'to go',
-    spanish: 'ir',
-    options: ['venir', 'ir', 'salir', 'llegar'],
-    correct: 'ir'
-  },
-  {
-    id: 5,
-    english: 'to eat',
-    spanish: 'comer',
-    options: ['beber', 'comer', 'cocinar', 'probar'],
-    correct: 'comer'
-  },
-  {
-    id: 6,
-    english: 'to sleep',
-    spanish: 'dormir',
-    options: ['descansar', 'jugar', 'dormir', 'soñar'],
-    correct: 'dormir'
-  },
-  {
-    id: 7,
-    english: 'to study',
-    spanish: 'estudiar',
-    options: ['aprender', 'enseñar', 'leer', 'estudiar'],
-    correct: 'estudiar'
-  },
-  {
-    id: 8,
-    english: 'to work',
-    spanish: 'trabajar',
-    options: ['descansar', 'jugar', 'trabajar', 'viajar'],
-    correct: 'trabajar'
-  },
-  {
-    id: 9,
-    english: 'to play',
-    spanish: 'jugar',
-    options: ['ganar', 'perder', 'jugar', 'competir'],
-    correct: 'jugar'
-  },
-  {
-    id: 10,
-    english: 'to write',
-    spanish: 'escribir',
-    options: ['leer', 'escribir', 'dibujar', 'pintar'],
-    correct: 'escribir'
-  },
-  {
-    id: 11,
-    english: 'to read',
-    spanish: 'leer',
-    options: ['escuchar', 'hablar', 'leer', 'ver'],
-    correct: 'leer'
-  },
-  {
-    id: 12,
-    english: 'to run',
-    spanish: 'correr',
-    options: ['caminar', 'saltar', 'correr', 'nadar'],
-    correct: 'correr'
-  },
-  {
-    id: 13,
-    english: 'to swim',
-    spanish: 'nadar',
-    options: ['volar', 'nadar', 'bucear', 'flotar'],
-    correct: 'nadar'
-  },
-  {
-    id: 14,
-    english: 'to drive',
-    spanish: 'conducir',
-    options: ['caminar', 'correr', 'conducir', 'viajar'],
-    correct: 'conducir'
-  },
-  {
-    id: 15,
-    english: 'to teach',
-    spanish: 'enseñar',
-    options: ['aprender', 'estudiar', 'enseñar', 'practicar'],
-    correct: 'enseñar'
+    id: 'hard',
+    name: 'Concentración Difícil',
+    difficulty: 'hard',
+    description: 'Verbos irregulares - 20 preguntas',
+    questionCount: 20,
+    points: 20,
+    timeLimit: 360,
+    color: 'bg-red-50 border-red-200 hover:bg-red-100'
   }
-]
+];
 
 export default function ConcentrationGame() {
-  const [gameStarted, setGameStarted] = useState(false)
-  const [gameCompleted, setGameCompleted] = useState(false)
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-  const [score, setScore] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(30)
-  const [selectedAnswer, setSelectedAnswer] = useState('')
-  const [showResult, setShowResult] = useState(false)
-  const [isCorrect, setIsCorrect] = useState(false)
-  const [streak, setStreak] = useState(0)
-  const [bestScore, setBestScore] = useState<number | null>(null)
-  const [usedQuestions, setUsedQuestions] = useState<number[]>([])
-  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null)
+  const [verbs, setVerbs] = useState<Verb[]>([]);
+  const [selectedLevel, setSelectedLevel] = useState<GameLevel | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [selectedAnswer, setSelectedAnswer] = useState<string>('');
+  const [score, setScore] = useState(0);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [gameCompleted, setGameCompleted] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [answers, setAnswers] = useState<{question: Question, userAnswer: string, correct: boolean}[]>([]);
+  const [showResult, setShowResult] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('concentrationGameBestScore')
-    if (saved) {
-      setBestScore(parseInt(saved))
-    }
-  }, [])
+    fetchVerbs();
+  }, []);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout
-    if (gameStarted && !gameCompleted && timeLeft > 0 && !showResult) {
-      interval = setInterval(() => {
-        setTimeLeft(prev => prev - 1)
-      }, 1000)
-    } else if (timeLeft === 0 && !gameCompleted) {
-      handleTimeout()
+    if (gameStarted && timeLeft > 0 && !gameCompleted) {
+      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (timeLeft === 0 && gameStarted && !gameCompleted) {
+      endGame();
     }
-    return () => clearInterval(interval)
-  }, [gameStarted, gameCompleted, timeLeft, showResult])
+  }, [timeLeft, gameStarted, gameCompleted]);
 
-  const getRandomQuestion = useCallback(() => {
-    const availableQuestions = questions.filter(q => !usedQuestions.includes(q.id))
-    if (availableQuestions.length === 0) {
-      return null
-    }
-    const randomIndex = Math.floor(Math.random() * availableQuestions.length)
-    return availableQuestions[randomIndex]
-  }, [usedQuestions])
-
-  const startGame = () => {
-    setGameStarted(true)
-    setGameCompleted(false)
-    setScore(0)
-    setTimeLeft(30)
-    setStreak(0)
-    setUsedQuestions([])
-    setSelectedAnswer('')
-    setShowResult(false)
-    loadNewQuestion()
-  }
-
-  const loadNewQuestion = () => {
-    const question = getRandomQuestion()
-    if (!question) {
-      completeGame()
-      return
-    }
-    setCurrentQuestion(question)
-    setUsedQuestions(prev => [...prev, question.id])
-    setSelectedAnswer('')
-    setShowResult(false)
-    setTimeLeft(30)
-  }
-
-  const handleAnswerSelect = (answer: string) => {
-    if (showResult) return
-    
-    setSelectedAnswer(answer)
-    const correct = answer === currentQuestion?.correct
-    setIsCorrect(correct)
-    setShowResult(true)
-
-    if (correct) {
-      const points = Math.max(10, Math.floor(timeLeft / 3) * 10)
-      const streakBonus = streak * 5
-      setScore(prev => prev + points + streakBonus)
-      setStreak(prev => prev + 1)
-    } else {
-      setStreak(0)
-    }
-
-    setTimeout(() => {
-      if (correct) {
-        loadNewQuestion()
-      } else {
-        completeGame()
+  const fetchVerbs = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/verbs');
+      if (!response.ok) throw new Error('Failed to fetch verbs');
+      const result = await response.json();
+      if (result.success && result.data) {
+        setVerbs(result.data);
       }
-    }, 2000)
-  }
-
-  const handleTimeout = () => {
-    setShowResult(true)
-    setIsCorrect(false)
-    setStreak(0)
-    setTimeout(() => {
-      completeGame()
-    }, 2000)
-  }
-
-  const completeGame = () => {
-    setGameCompleted(true)
-    if (!bestScore || score > bestScore) {
-      setBestScore(score)
-      localStorage.setItem('concentrationGameBestScore', score.toString())
+    } catch (err) {
+      setError('Error al cargar los verbos');
+      console.error('Error fetching verbs:', err);
+    } finally {
+      setLoading(false);
     }
-  }
+  };
+
+  const generateQuestions = (level: GameLevel): Question[] => {
+    const filteredVerbs = verbs.filter(verb => verb.difficulty === level.difficulty);
+    const selectedVerbs = filteredVerbs.slice(0, level.questionCount);
+    
+    return selectedVerbs.map(verb => {
+      const questionTypes: Array<'infinitive' | 'past' | 'participle'> = ['infinitive', 'past', 'participle'];
+      const questionType = questionTypes[Math.floor(Math.random() * questionTypes.length)];
+      
+      let correctAnswer: string;
+      let questionText: string;
+      
+      switch (questionType) {
+        case 'infinitive':
+          correctAnswer = verb.infinitive;
+          break;
+        case 'past':
+          correctAnswer = verb.past;
+          break;
+        case 'participle':
+          correctAnswer = verb.participle;
+          break;
+      }
+      
+      // Generate options
+      const allOptions = verbs.map(v => {
+        switch (questionType) {
+          case 'infinitive': return v.infinitive;
+          case 'past': return v.past;
+          case 'participle': return v.participle;
+        }
+      });
+      
+      // Remove correct answer and get random wrong options
+      const wrongOptions = allOptions.filter(opt => opt !== correctAnswer);
+      const randomWrongOptions = wrongOptions.sort(() => 0.5 - Math.random()).slice(0, 3);
+      const options = [correctAnswer, ...randomWrongOptions].sort(() => 0.5 - Math.random());
+      
+      return {
+        verb,
+        questionType,
+        correctAnswer,
+        options
+      };
+    });
+  };
+
+  const startGame = (level: GameLevel) => {
+    setSelectedLevel(level);
+    setGameStarted(true);
+    setScore(0);
+    setCurrentQuestionIndex(0);
+    setAnswers([]);
+    setTimeLeft(level.timeLimit);
+    setGameCompleted(false);
+    setShowResult(false);
+    setSelectedAnswer('');
+
+    const gameQuestions = generateQuestions(level);
+    setQuestions(gameQuestions);
+    setCurrentQuestion(gameQuestions[0]);
+  };
+
+  const speakText = (text: string) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US';
+      utterance.rate = 0.8;
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const selectAnswer = (answer: string) => {
+    if (showResult) return;
+    
+    setSelectedAnswer(answer);
+    setShowResult(true);
+    
+    const isCorrect = answer === currentQuestion!.correctAnswer;
+    const newAnswers = [...answers, { question: currentQuestion!, userAnswer: answer, correct: isCorrect }];
+    setAnswers(newAnswers);
+
+    if (isCorrect) {
+      setScore(score + selectedLevel!.points);
+    }
+
+    // Auto advance after showing result
+    setTimeout(() => {
+      if (currentQuestionIndex < questions.length - 1) {
+        const nextIndex = currentQuestionIndex + 1;
+        setCurrentQuestionIndex(nextIndex);
+        setCurrentQuestion(questions[nextIndex]);
+        setSelectedAnswer('');
+        setShowResult(false);
+      } else {
+        endGame();
+      }
+    }, 2000);
+  };
+
+  const endGame = () => {
+    setGameCompleted(true);
+    setGameStarted(false);
+  };
+
+  const resetGame = () => {
+    setSelectedLevel(null);
+    setGameStarted(false);
+    setGameCompleted(false);
+    setScore(0);
+    setCurrentQuestionIndex(0);
+    setAnswers([]);
+    setSelectedAnswer('');
+    setCurrentQuestion(null);
+    setShowResult(false);
+  };
 
   const formatTime = (seconds: number) => {
-    return `${seconds}s`
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy': return 'bg-green-100 text-green-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'hard': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getQuestionText = (question: Question) => {
+    switch (question.questionType) {
+      case 'infinitive':
+        return `¿Cuál es el infinitivo de "${question.verb.translation}"?`;
+      case 'past':
+        return `¿Cuál es el pasado de "${question.verb.infinitive}"?`;
+      case 'participle':
+        return `¿Cuál es el participio de "${question.verb.infinitive}"?`;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+      </div>
+    );
   }
 
-  const getDifficultyColor = (timeLeft: number) => {
-    if (timeLeft > 20) return 'text-green-600'
-    if (timeLeft > 10) return 'text-yellow-600'
-    return 'text-red-600'
+  if (error) {
+    return (
+      <Alert className="max-w-md mx-auto">
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
   }
 
-  const getStreakColor = (streak: number) => {
-    if (streak >= 5) return 'bg-purple-500'
-    if (streak >= 3) return 'bg-blue-500'
-    return 'bg-gray-500'
-  }
-
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="w-6 h-6 text-purple-600" />
-            Juego de Concentración - Velocidad y Precisión
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center space-y-4">
-            <p className="text-gray-600">
-              Responde correctamente antes de que se acabe el tiempo. 
-              ¡Construye una racha de respuestas correctas para obtener bonus!
-            </p>
-
-            {!gameStarted && (
-              <Button onClick={startGame} size="lg" className="bg-purple-600 hover:bg-purple-700">
-                <Zap className="w-5 h-5 mr-2" />
-                Comenzar Desafío
-              </Button>
-            )}
-
-            {gameStarted && currentQuestion && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
-                <div className="text-center">
-                  <p className="text-sm text-gray-500">Puntuación</p>
-                  <p className="text-2xl font-bold text-purple-600">{score}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-sm text-gray-500">Tiempo</p>
-                  <p className={`text-2xl font-bold ${getDifficultyColor(timeLeft)}`}>
-                    {formatTime(timeLeft)}
-                  </p>
-                </div>
-                <div className="text-center">
-                  <p className="text-sm text-gray-500">Racha</p>
-                  <div className="flex items-center justify-center gap-1">
-                    <div className={`w-8 h-8 rounded-full ${getStreakColor(streak)} text-white flex items-center justify-center text-sm font-bold`}>
-                      {streak}
+  if (!selectedLevel) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Concentración</h2>
+          <p className="text-gray-600">Pon a prueba tu conocimiento de los tiempos verbales</p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {gameLevels.map((level) => (
+            <Card 
+              key={level.id} 
+              className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${level.color}`}
+              onClick={() => startGame(level)}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>{level.name}</span>
+                  <Badge className={getDifficultyColor(level.difficulty)}>
+                    {level.difficulty === 'easy' ? 'Fácil' : 
+                     level.difficulty === 'medium' ? 'Media' : 'Difícil'}
+                  </Badge>
+                </CardTitle>
+                <CardDescription>{level.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-1">
+                      <Target className="w-4 h-4" />
+                      <span>{level.questionCount} preguntas</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Award className="w-4 h-4" />
+                      <span>{level.points} pts</span>
                     </div>
                   </div>
-                </div>
-                <div className="text-center">
-                  <p className="text-sm text-gray-500">Mejor Puntuación</p>
-                  <p className="text-2xl font-bold text-yellow-600">{bestScore || '-'}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {gameStarted && currentQuestion && (
-        <Card>
-          <CardContent className="p-8">
-            <div className="text-center space-y-6">
-              <div className="space-y-2">
-                <Badge variant="outline" className="text-sm">
-                  Pregunta {usedQuestions.length}
-                </Badge>
-                <h3 className="text-2xl font-bold text-gray-800">
-                  ¿Cuál es la traducción de:
-                </h3>
-                <div className="text-4xl font-bold text-purple-600 py-4">
-                  "{currentQuestion.english}"
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
-                {currentQuestion.options.map((option, index) => (
-                  <Button
-                    key={index}
-                    onClick={() => handleAnswerSelect(option)}
-                    disabled={showResult}
-                    variant={showResult ? (option === currentQuestion.correct ? 'default' : 
-                                   option === selectedAnswer ? 'destructive' : 'outline') : 'outline'}
-                    className={`p-4 text-lg font-medium transition-all
-                      ${!showResult && 'hover:bg-purple-100 hover:border-purple-300'}
-                      ${showResult && option === currentQuestion.correct ? 'bg-green-600 hover:bg-green-700' : ''}
-                      ${showResult && option === selectedAnswer && option !== currentQuestion.correct ? 'bg-red-600 hover:bg-red-700' : ''}
-                    `}
-                  >
-                    {option}
+                  <div className="flex items-center gap-1 text-sm">
+                    <Clock className="w-4 h-4" />
+                    <span>{formatTime(level.timeLimit)}</span>
+                  </div>
+                  <Button className="w-full">
+                    <Play className="w-4 h-4 mr-2" />
+                    Comenzar Juego
                   </Button>
-                ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (gameCompleted) {
+    const correctAnswers = answers.filter(a => a.correct).length;
+    const accuracy = Math.round((correctAnswers / answers.length) * 100);
+
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <Card>
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">¡Juego Completado!</CardTitle>
+            <CardDescription>Resultados de {selectedLevel.name}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="bg-green-50 p-4 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">{score}</div>
+                <div className="text-sm text-gray-600">Puntos</div>
               </div>
-
-              {showResult && (
-                <div className={`text-lg font-bold ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
-                  {isCorrect ? '✓ ¡Correcto!' : '✗ Incorrecto'}
-                  {isCorrect && streak > 0 && (
-                    <div className="text-sm text-purple-600 mt-1">
-                      +{Math.max(10, Math.floor(timeLeft / 3) * 10)} puntos 
-                      {streak > 1 && ` +${streak * 5} bonus de racha`}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {timeLeft <= 10 && !showResult && (
-                <div className="text-red-600 font-bold animate-pulse">
-                  ¡Apúrate! Queda poco tiempo.
-                </div>
-              )}
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">{correctAnswers}/{answers.length}</div>
+                <div className="text-sm text-gray-600">Correctas</div>
+              </div>
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <div className="text-2xl font-bold text-purple-600">{accuracy}%</div>
+                <div className="text-sm text-gray-600">Precisión</div>
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
 
-      {gameCompleted && (
-        <Card className="bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
-          <CardContent className="text-center py-8">
-            <Trophy className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-            <h3 className="text-2xl font-bold text-purple-800 mb-2">
-              {score > 50 ? '¡Excelente!' : score > 20 ? '¡Buen trabajo!' : '¡Sigue practicando!'}
-            </h3>
-            <p className="text-gray-700 mb-4">
-              Tu puntuación final: <span className="font-bold text-purple-600">{score}</span> puntos
-            </p>
-            <p className="text-sm text-gray-600 mb-4">
-              Respondiste correctamente {usedQuestions.length - (showResult && !isCorrect ? 1 : 0)} preguntas
-            </p>
-            {bestScore === score && score > 0 && (
-              <p className="text-sm text-purple-600 font-medium mb-4">
-                ¡Nueva mejor puntuación!
-              </p>
-            )}
-            <Button onClick={startGame} className="bg-purple-600 hover:bg-purple-700">
+            <Button onClick={resetGame} className="w-full">
               <RotateCcw className="w-4 h-4 mr-2" />
               Jugar de Nuevo
             </Button>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-6">
+      {/* Game Header */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Badge className={getDifficultyColor(selectedLevel.difficulty)}>
+                {selectedLevel.name}
+              </Badge>
+              <div className="flex items-center gap-1">
+                <Target className="w-4 h-4" />
+                <span className="font-semibold">{score} pts</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1 text-sm">
+                <Clock className="w-4 h-4" />
+                <span className={timeLeft < 30 ? 'text-red-600 font-bold' : ''}>
+                  {formatTime(timeLeft)}
+                </span>
+              </div>
+              <div className="text-sm text-gray-600">
+                {currentQuestionIndex + 1}/{questions.length}
+              </div>
+            </div>
+          </div>
+          <Progress value={(currentQuestionIndex / questions.length) * 100} className="mt-2" />
+        </CardContent>
+      </Card>
+
+      {/* Game Content */}
+      {currentQuestion && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-center text-xl">
+              {getQuestionText(currentQuestion)}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="text-center">
+              <div className="bg-gray-50 p-6 rounded-lg mb-4">
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-lg text-gray-600">
+                    {currentQuestion.questionType === 'infinitive' && `Traducción: ${currentQuestion.verb.translation}`}
+                    {currentQuestion.questionType === 'past' && `Infinitivo: ${currentQuestion.verb.infinitive}`}
+                    {currentQuestion.questionType === 'participle' && `Infinitivo: ${currentQuestion.verb.infinitive}`}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => speakText(currentQuestion.verb.infinitive)}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    <Volume2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {currentQuestion.options.map((option, index) => {
+                const isSelected = selectedAnswer === option;
+                const isCorrect = option === currentQuestion.correctAnswer;
+                const showCorrect = showResult && isCorrect;
+                const showWrong = showResult && isSelected && !isCorrect;
+
+                return (
+                  <Button
+                    key={index}
+                    variant={showCorrect ? "default" : showWrong ? "destructive" : "outline"}
+                    className={`p-4 h-auto text-left justify-start ${
+                      showCorrect ? 'bg-green-600 hover:bg-green-700' : 
+                      showWrong ? 'bg-red-600 hover:bg-red-700' : ''
+                    }`}
+                    onClick={() => selectAnswer(option)}
+                    disabled={showResult}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span>{option}</span>
+                      {showCorrect && <CheckCircle className="w-4 h-4" />}
+                    </div>
+                  </Button>
+                );
+              })}
+            </div>
+
+            {showResult && (
+              <div className={`text-center p-3 rounded-lg ${
+                selectedAnswer === currentQuestion.correctAnswer 
+                  ? 'bg-green-50 text-green-800' 
+                  : 'bg-red-50 text-red-800'
+              }`}>
+                {selectedAnswer === currentQuestion.correctAnswer 
+                  ? '✓ ¡Correcto!' 
+                  : `✗ Incorrecto. La respuesta correcta es: ${currentQuestion.correctAnswer}`
+                }
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
-  )
+  );
 }

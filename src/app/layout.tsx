@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { PlayerProvider } from "@/contexts/PlayerContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,21 +16,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Z.ai Code Scaffold - AI-Powered Development",
-  description: "Modern Next.js scaffold optimized for AI-powered development with Z.ai. Built with TypeScript, Tailwind CSS, and shadcn/ui.",
-  keywords: ["Z.ai", "Next.js", "TypeScript", "Tailwind CSS", "shadcn/ui", "AI development", "React"],
-  authors: [{ name: "Z.ai Team" }],
+  title: "Verbos English - Aprende Verbos en Inglés",
+  description: "¡Aprende verbos en inglés con 70+ juegos divertidos! Memoria, concentración, crucigramas y más.",
+  keywords: ["verbos inglés", "aprender inglés", "juegos educativos", "English verbs", "learning games"],
+  authors: [{ name: "Verbos English Team" }],
   openGraph: {
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
-    url: "https://chat.z.ai",
-    siteName: "Z.ai",
+    title: "Verbos English - Aprende Verbos en Inglés",
+    description: "¡Aprende verbos en inglés con 70+ juegos divertidos!",
+    url: "https://verbos-english.vercel.app",
+    siteName: "Verbos English",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
+    title: "Verbos English",
+    description: "¡Aprende verbos en inglés con 70+ juegos divertidos!",
   },
 };
 
@@ -38,12 +40,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
-        {children}
-        <Toaster />
+        <AuthProvider>
+          <PlayerProvider>
+            {children}
+            <Toaster />
+          </PlayerProvider>
+        </AuthProvider>
       </body>
     </html>
   );

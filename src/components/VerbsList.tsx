@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Search, Volume2, BookOpen, RefreshCw } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Search, Volume2, BookOpen, RefreshCw, Info } from 'lucide-react'
 
 interface Verb {
   id: number
@@ -33,6 +34,20 @@ export default function VerbsList() {
 
   useEffect(() => {
     fetchVerbs()
+  }, [])
+
+  // Cargar voces de speech synthesis
+  useEffect(() => {
+    if ('speechSynthesis' in window) {
+      // Cargar voces disponibles
+      const loadVoices = () => {
+        window.speechSynthesis.getVoices();
+      };
+      
+      // Cargar voces inmediatamente y también cuando estén disponibles
+      loadVoices();
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
   }, [])
 
   useEffect(() => {
@@ -65,12 +80,19 @@ export default function VerbsList() {
       if (!response.ok) {
         throw new Error('Failed to fetch verbs')
       }
-      const data = await response.json()
-      setVerbs(data)
-      setFilteredVerbs(data)
+      const result = await response.json()
+      if (result.success && result.data) {
+        setVerbs(result.data)
+        setFilteredVerbs(result.data)
+      } else {
+        setVerbs([])
+        setFilteredVerbs([])
+      }
     } catch (err) {
       setError('Error al cargar los verbos. Por favor intenta de nuevo.')
       console.error('Error fetching verbs:', err)
+      setVerbs([])
+      setFilteredVerbs([])
     } finally {
       setLoading(false)
     }
@@ -94,12 +116,34 @@ export default function VerbsList() {
 
   const speakText = (text: string) => {
     if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(text)
-      utterance.lang = 'en-US'
-      utterance.rate = 0.8
-      speechSynthesis.speak(utterance)
+      // Cancelar cualquier speech en curso
+      window.speechSynthesis.cancel();
+      
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US';
+      utterance.rate = 0.8;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      
+      // Obtener voces disponibles y preferir voces en inglés
+      const voices = window.speechSynthesis.getVoices();
+      const englishVoice = voices.find(voice => 
+        voice.lang.startsWith('en-') && voice.name.includes('Google') || 
+        voice.name.includes('Microsoft') || 
+        voice.name.includes('Amazon')
+      );
+      
+      if (englishVoice) {
+        utterance.voice = englishVoice;
+      }
+      
+      window.speechSynthesis.speak(utterance);
+    } else {
+      console.warn('Speech synthesis not supported in this browser');
+      // Alternativa: mostrar alerta o mensaje visual
+      alert('Tu navegador no soporta reproducción de voz. Prueba con Chrome, Safari o Edge.');
     }
-  }
+  };
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -154,6 +198,14 @@ export default function VerbsList() {
 
   return (
     <div className="space-y-6">
+      {/* Banner de Modo Demo */}
+      <Alert className="bg-amber-50 border-amber-200">
+        <Info className="h-4 w-4 text-amber-600" />
+        <AlertDescription className="text-amber-800">
+          <strong>Modo Demo Activo</strong> - Estás viendo una versión de demostración. Las estadísticas y el progreso no se guardan en esta versión.
+        </AlertDescription>
+      </Alert>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -205,7 +257,7 @@ export default function VerbsList() {
           </div>
 
           <div className="flex items-center justify-between text-sm text-gray-600">
-            <span>{filteredVerbs.length} verbos encontrados</span>
+            <span>{Array.isArray(filteredVerbs) ? filteredVerbs.length : 0} verbos encontrados</span>
             <Button onClick={seedDatabase} variant="outline" size="sm">
               <RefreshCw className="w-4 h-4 mr-1" />
               Recargar Datos
@@ -215,45 +267,81 @@ export default function VerbsList() {
       </Card>
 
       <div className="grid gap-4">
-        {filteredVerbs.map((verb) => (
-          <Card key={verb.id} className="hover:shadow-md transition-shadow">
+        {Array.isArray(filteredVerbs) && filteredVerbs.map((verb) => (
+          <Card key={verb.id} className="hover:shadow-lg transition-all duration-200 border-2 hover:border-blue-200">
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex gap-2">
                   <Badge className={getCategoryColor(verb.category)}>
-                    {verb.category === 'regular' ? 'Regular' : 'Irregular'}
+                    {verb.category === 'regular' ? '🔵 Regular' : '🔴 Irregular'}
                   </Badge>
                   <Badge className={getDifficultyColor(verb.difficulty)}>
-                    {verb.difficulty === 'easy' ? 'Fácil' : 
-                     verb.difficulty === 'medium' ? 'Media' : 'Difícil'}
+                    {verb.difficulty === 'easy' ? '🟢 Fácil' : 
+                     verb.difficulty === 'medium' ? '🟡 Media' : '🔴 Difícil'}
                   </Badge>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => speakText(verb.infinitive)}
-                  className="text-blue-600 hover:text-blue-800"
-                >
-                  <Volume2 className="w-4 h-4" />
-                </Button>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => speakText(verb.infinitive)}
+                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                    title="Escuchar infinitivo"
+                  >
+                    <Volume2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-500 mb-1">Infinitivo</p>
-                  <p className="text-lg font-semibold text-gray-900">{verb.infinitive}</p>
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium text-gray-600">Infinitivo</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => speakText(verb.infinitive)}
+                      className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1 h-6"
+                      title="Escuchar infinitivo"
+                    >
+                      <Volume2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                  <p className="text-xl font-bold text-gray-900">{verb.infinitive}</p>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500 mb-1">Pasado</p>
-                  <p className="text-lg font-semibold text-gray-900">{verb.past}</p>
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium text-gray-600">Pasado</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => speakText(verb.past)}
+                      className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1 h-6"
+                      title="Escuchar pasado"
+                    >
+                      <Volume2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                  <p className="text-xl font-bold text-gray-900">{verb.past}</p>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500 mb-1">Participio</p>
-                  <p className="text-lg font-semibold text-gray-900">{verb.participle}</p>
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium text-gray-600">Participio</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => speakText(verb.participle)}
+                      className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1 h-6"
+                      title="Escuchar participio"
+                    >
+                      <Volume2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                  <p className="text-xl font-bold text-gray-900">{verb.participle}</p>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500 mb-1">Traducción</p>
-                  <p className="text-lg font-semibold text-gray-900">{verb.translation}</p>
+                <div className="bg-blue-50 p-3 rounded-lg border-2 border-blue-200">
+                  <p className="text-sm font-medium text-blue-600 mb-2">Traducción</p>
+                  <p className="text-xl font-bold text-blue-900">{verb.translation}</p>
                 </div>
               </div>
             </CardContent>
@@ -261,7 +349,7 @@ export default function VerbsList() {
         ))}
       </div>
 
-      {filteredVerbs.length === 0 && (
+      {!Array.isArray(filteredVerbs) || filteredVerbs.length === 0 && (
         <Card>
           <CardContent className="text-center py-8">
             <p className="text-gray-500">No se encontraron verbos que coincidan con tu búsqueda.</p>
