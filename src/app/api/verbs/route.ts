@@ -1,338 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-// Base de datos simulada de verbos - extendida con más verbos y categorías
-const verbsData = [
-  {
-    id: 1,
-    infinitive: 'be',
-    past: 'was/were',
-    participle: 'been',
-    translation: 'ser/estar',
-    level: 'basic',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'easy'
-  },
-  {
-    id: 2,
-    infinitive: 'go',
-    past: 'went',
-    participle: 'gone',
-    translation: 'ir',
-    level: 'basic',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'easy'
-  },
-  {
-    id: 3,
-    infinitive: 'have',
-    past: 'had',
-    participle: 'had',
-    translation: 'tener/haber',
-    level: 'basic',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'easy'
-  },
-  {
-    id: 4,
-    infinitive: 'do',
-    past: 'did',
-    participle: 'done',
-    translation: 'hacer',
-    level: 'basic',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'easy'
-  },
-  {
-    id: 5,
-    infinitive: 'say',
-    past: 'said',
-    participle: 'said',
-    translation: 'decir',
-    level: 'basic',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'easy'
-  },
-  {
-    id: 6,
-    infinitive: 'get',
-    past: 'got',
-    participle: 'got/gotten',
-    translation: 'conseguir/obtener',
-    level: 'basic',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'easy'
-  },
-  {
-    id: 7,
-    infinitive: 'make',
-    past: 'made',
-    participle: 'made',
-    translation: 'hacer/crear',
-    level: 'basic',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'easy'
-  },
-  {
-    id: 8,
-    infinitive: 'know',
-    past: 'knew',
-    participle: 'known',
-    translation: 'saber/conocer',
-    level: 'basic',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'easy'
-  },
-  {
-    id: 9,
-    infinitive: 'think',
-    past: 'thought',
-    participle: 'thought',
-    translation: 'pensar',
-    level: 'basic',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'easy'
-  },
-  {
-    id: 10,
-    infinitive: 'take',
-    past: 'took',
-    participle: 'taken',
-    translation: 'tomar/llevar',
-    level: 'basic',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'easy'
-  },
-  {
-    id: 11,
-    infinitive: 'come',
-    past: 'came',
-    participle: 'come',
-    translation: 'venir',
-    level: 'basic',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'easy'
-  },
-  {
-    id: 12,
-    infinitive: 'see',
-    past: 'saw',
-    participle: 'seen',
-    translation: 'ver',
-    level: 'basic',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'easy'
-  },
-  {
-    id: 13,
-    infinitive: 'want',
-    past: 'wanted',
-    participle: 'wanted',
-    translation: 'querer',
-    level: 'basic',
-    irregular: false,
-    category: 'regular',
-    difficulty: 'easy'
-  },
-  {
-    id: 14,
-    infinitive: 'look',
-    past: 'looked',
-    participle: 'looked',
-    translation: 'mirar',
-    level: 'basic',
-    irregular: false,
-    category: 'regular',
-    difficulty: 'easy'
-  },
-  {
-    id: 15,
-    infinitive: 'use',
-    past: 'used',
-    participle: 'used',
-    translation: 'usar',
-    level: 'basic',
-    irregular: false,
-    category: 'regular',
-    difficulty: 'easy'
-  },
-  {
-    id: 16,
-    infinitive: 'find',
-    past: 'found',
-    participle: 'found',
-    translation: 'encontrar',
-    level: 'basic',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'easy'
-  },
-  {
-    id: 17,
-    infinitive: 'give',
-    past: 'gave',
-    participle: 'given',
-    translation: 'dar',
-    level: 'basic',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'easy'
-  },
-  {
-    id: 18,
-    infinitive: 'tell',
-    past: 'told',
-    participle: 'told',
-    translation: 'contar/decir',
-    level: 'basic',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'easy'
-  },
-  {
-    id: 19,
-    infinitive: 'work',
-    past: 'worked',
-    participle: 'worked',
-    translation: 'trabajar',
-    level: 'basic',
-    irregular: false,
-    category: 'regular',
-    difficulty: 'easy'
-  },
-  {
-    id: 20,
-    infinitive: 'call',
-    past: 'called',
-    participle: 'called',
-    translation: 'llamar',
-    level: 'basic',
-    irregular: false,
-    category: 'regular',
-    difficulty: 'easy'
-  },
-  {
-    id: 21,
-    infinitive: 'write',
-    past: 'wrote',
-    participle: 'written',
-    translation: 'escribir',
-    level: 'intermediate',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'medium'
-  },
-  {
-    id: 22,
-    infinitive: 'read',
-    past: 'read',
-    participle: 'read',
-    translation: 'leer',
-    level: 'intermediate',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'medium'
-  },
-  {
-    id: 23,
-    infinitive: 'run',
-    past: 'ran',
-    participle: 'run',
-    translation: 'correr',
-    level: 'intermediate',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'medium'
-  },
-  {
-    id: 24,
-    infinitive: 'eat',
-    past: 'ate',
-    participle: 'eaten',
-    translation: 'comer',
-    level: 'intermediate',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'medium'
-  },
-  {
-    id: 25,
-    infinitive: 'drink',
-    past: 'drank',
-    participle: 'drunk',
-    translation: 'beber',
-    level: 'intermediate',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'medium'
-  },
-  {
-    id: 26,
-    infinitive: 'sleep',
-    past: 'slept',
-    participle: 'slept',
-    translation: 'dormir',
-    level: 'intermediate',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'medium'
-  },
-  {
-    id: 27,
-    infinitive: 'study',
-    past: 'studied',
-    participle: 'studied',
-    translation: 'estudiar',
-    level: 'intermediate',
-    irregular: false,
-    category: 'regular',
-    difficulty: 'medium'
-  },
-  {
-    id: 28,
-    infinitive: 'play',
-    past: 'played',
-    participle: 'played',
-    translation: 'jugar',
-    level: 'intermediate',
-    irregular: false,
-    category: 'regular',
-    difficulty: 'medium'
-  },
-  {
-    id: 29,
-    infinitive: 'begin',
-    past: 'began',
-    participle: 'begun',
-    translation: 'empezar',
-    level: 'intermediate',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'medium'
-  },
-  {
-    id: 30,
-    infinitive: 'buy',
-    past: 'bought',
-    participle: 'bought',
-    translation: 'comprar',
-    level: 'intermediate',
-    irregular: true,
-    category: 'irregular',
-    difficulty: 'medium'
-  }
-];
+import { db } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -343,46 +10,58 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
     const difficulty = searchParams.get('difficulty');
 
-    let filteredVerbs = [...verbsData];
-
-    // Filtrar por nivel
-    if (level && level !== 'all') {
-      filteredVerbs = filteredVerbs.filter(verb => verb.level === level);
-    }
+    // Build where clause
+    const where: any = {};
 
     // Filtrar por categoría
     if (category && category !== 'all') {
-      filteredVerbs = filteredVerbs.filter(verb => verb.category === category);
+      where.category = category;
     }
 
     // Filtrar por dificultad
     if (difficulty && difficulty !== 'all') {
-      filteredVerbs = filteredVerbs.filter(verb => verb.difficulty === difficulty);
+      where.difficulty = difficulty;
     }
 
     // Filtrar por regulares/irregulares
     if (irregular === 'true') {
-      filteredVerbs = filteredVerbs.filter(verb => verb.irregular);
+      where.category = 'irregular';
     } else if (irregular === 'false') {
-      filteredVerbs = filteredVerbs.filter(verb => !verb.irregular);
+      where.category = 'regular';
     }
 
-    // Limitar resultados
+    // Get verbs from database
+    let verbs = await db.verb.findMany({
+      where,
+      orderBy: [
+        { difficulty: 'asc' },
+        { infinitive: 'asc' }
+      ]
+    });
+
+    // Apply limit if specified
     if (limit) {
       const limitNum = parseInt(limit);
-      filteredVerbs = filteredVerbs.slice(0, limitNum);
+      verbs = verbs.slice(0, limitNum);
     }
 
-    // Mezclar aleatoriamente si no hay filtros específicos
-    if (!level && !category && !difficulty && !irregular) {
-      filteredVerbs = filteredVerbs.sort(() => 0.5 - Math.random());
+    // If no verbs in database, return mock data
+    if (verbs.length === 0) {
+      return NextResponse.json({
+        success: true,
+        data: getMockVerbs(searchParams),
+        total: getMockVerbs(searchParams).length,
+        message: 'Verbos cargados exitosamente (datos simulados)',
+        usingMockData: true
+      });
     }
 
     return NextResponse.json({
       success: true,
-      data: filteredVerbs,
-      total: filteredVerbs.length,
-      message: 'Verbos cargados exitosamente'
+      data: verbs,
+      total: verbs.length,
+      message: 'Verbos cargados exitosamente',
+      usingMockData: false
     });
 
   } catch (error) {
@@ -396,6 +75,84 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// Mock data as fallback
+function getMockVerbs(searchParams: URLSearchParams) {
+  const mockData = [
+    // Basic verbs (15)
+    { id: 1, infinitive: 'be', past: 'was/were', participle: 'been', translation: 'ser/estar', category: 'irregular', difficulty: 'easy' },
+    { id: 2, infinitive: 'go', past: 'went', participle: 'gone', translation: 'ir', category: 'irregular', difficulty: 'easy' },
+    { id: 3, infinitive: 'have', past: 'had', participle: 'had', translation: 'tener/haber', category: 'irregular', difficulty: 'easy' },
+    { id: 4, infinitive: 'do', past: 'did', participle: 'done', translation: 'hacer', category: 'irregular', difficulty: 'easy' },
+    { id: 5, infinitive: 'say', past: 'said', participle: 'said', translation: 'decir', category: 'irregular', difficulty: 'easy' },
+    { id: 6, infinitive: 'get', past: 'got', participle: 'got/gotten', translation: 'conseguir/obtener', category: 'irregular', difficulty: 'easy' },
+    { id: 7, infinitive: 'make', past: 'made', participle: 'made', translation: 'hacer/crear', category: 'irregular', difficulty: 'easy' },
+    { id: 8, infinitive: 'know', past: 'knew', participle: 'known', translation: 'saber/conocer', category: 'irregular', difficulty: 'easy' },
+    { id: 9, infinitive: 'think', past: 'thought', participle: 'thought', translation: 'pensar', category: 'irregular', difficulty: 'easy' },
+    { id: 10, infinitive: 'take', past: 'took', participle: 'taken', translation: 'tomar/llevar', category: 'irregular', difficulty: 'easy' },
+    { id: 11, infinitive: 'come', past: 'came', participle: 'come', translation: 'venir', category: 'irregular', difficulty: 'easy' },
+    { id: 12, infinitive: 'see', past: 'saw', participle: 'seen', translation: 'ver', category: 'irregular', difficulty: 'easy' },
+    { id: 13, infinitive: 'want', past: 'wanted', participle: 'wanted', translation: 'querer', category: 'regular', difficulty: 'easy' },
+    { id: 14, infinitive: 'look', past: 'looked', participle: 'looked', translation: 'mirar', category: 'regular', difficulty: 'easy' },
+    { id: 15, infinitive: 'use', past: 'used', participle: 'used', translation: 'usar', category: 'regular', difficulty: 'easy' },
+    
+    // Intermediate verbs (25)
+    { id: 16, infinitive: 'write', past: 'wrote', participle: 'written', translation: 'escribir', category: 'irregular', difficulty: 'medium' },
+    { id: 17, infinitive: 'read', past: 'read', participle: 'read', translation: 'leer', category: 'irregular', difficulty: 'medium' },
+    { id: 18, infinitive: 'run', past: 'ran', participle: 'run', translation: 'correr', category: 'irregular', difficulty: 'medium' },
+    { id: 19, infinitive: 'eat', past: 'ate', participle: 'eaten', translation: 'comer', category: 'irregular', difficulty: 'medium' },
+    { id: 20, infinitive: 'drink', past: 'drank', participle: 'drunk', translation: 'beber', category: 'irregular', difficulty: 'medium' },
+    { id: 21, infinitive: 'sleep', past: 'slept', participle: 'slept', translation: 'dormir', category: 'irregular', difficulty: 'medium' },
+    { id: 22, infinitive: 'study', past: 'studied', participle: 'studied', translation: 'estudiar', category: 'regular', difficulty: 'medium' },
+    { id: 23, infinitive: 'play', past: 'played', participle: 'played', translation: 'jugar', category: 'regular', difficulty: 'medium' },
+    { id: 24, infinitive: 'begin', past: 'began', participle: 'begun', translation: 'empezar', category: 'irregular', difficulty: 'medium' },
+    { id: 25, infinitive: 'buy', past: 'bought', participle: 'bought', translation: 'comprar', category: 'irregular', difficulty: 'medium' },
+    { id: 26, infinitive: 'bring', past: 'brought', participle: 'brought', translation: 'traer', category: 'irregular', difficulty: 'medium' },
+    { id: 27, infinitive: 'drive', past: 'drove', participle: 'driven', translation: 'conducir', category: 'irregular', difficulty: 'medium' },
+    { id: 28, infinitive: 'fly', past: 'flew', participle: 'flown', translation: 'volar', category: 'irregular', difficulty: 'medium' },
+    { id: 29, infinitive: 'forget', past: 'forgot', participle: 'forgotten', translation: 'olvidar', category: 'irregular', difficulty: 'medium' },
+    { id: 30, infinitive: 'give', past: 'gave', participle: 'given', translation: 'dar', category: 'irregular', difficulty: 'medium' },
+    { id: 31, infinitive: 'hear', past: 'heard', participle: 'heard', translation: 'escuchar', category: 'irregular', difficulty: 'medium' },
+    { id: 32, infinitive: 'leave', past: 'left', participle: 'left', translation: 'dejar/salir', category: 'irregular', difficulty: 'medium' },
+    { id: 33, infinitive: 'lose', past: 'lost', participle: 'lost', translation: 'perder', category: 'irregular', difficulty: 'medium' },
+    { id: 34, infinitive: 'meet', past: 'met', participle: 'met', translation: 'conocer/encontrar', category: 'irregular', difficulty: 'medium' },
+    { id: 35, infinitive: 'pay', past: 'paid', participle: 'paid', translation: 'pagar', category: 'irregular', difficulty: 'medium' },
+    { id: 36, infinitive: 'sit', past: 'sat', participle: 'sat', translation: 'sentarse', category: 'irregular', difficulty: 'medium' },
+    { id: 37, infinitive: 'speak', past: 'spoke', participle: 'spoken', translation: 'hablar', category: 'irregular', difficulty: 'medium' },
+    { id: 38, infinitive: 'stand', past: 'stood', participle: 'stood', translation: 'levantarse', category: 'irregular', difficulty: 'medium' },
+    { id: 39, infinitive: 'swim', past: 'swam', participle: 'swum', translation: 'nadar', category: 'irregular', difficulty: 'medium' },
+    { id: 40, infinitive: 'understand', past: 'understood', participle: 'understood', translation: 'entender', category: 'irregular', difficulty: 'medium' }
+  ];
+
+  let filteredVerbs = [...mockData];
+
+  // Apply filters
+  const category = searchParams.get('category');
+  const difficulty = searchParams.get('difficulty');
+  const irregular = searchParams.get('irregular');
+  const limit = searchParams.get('limit');
+
+  if (category && category !== 'all') {
+    filteredVerbs = filteredVerbs.filter(verb => verb.category === category);
+  }
+
+  if (difficulty && difficulty !== 'all') {
+    filteredVerbs = filteredVerbs.filter(verb => verb.difficulty === difficulty);
+  }
+
+  if (irregular === 'true') {
+    filteredVerbs = filteredVerbs.filter(verb => verb.category === 'irregular');
+  } else if (irregular === 'false') {
+    filteredVerbs = filteredVerbs.filter(verb => verb.category === 'regular');
+  }
+
+  if (limit) {
+    const limitNum = parseInt(limit);
+    filteredVerbs = filteredVerbs.slice(0, limitNum);
+  }
+
+  return filteredVerbs;
 }
 
 export async function POST(request: NextRequest) {
