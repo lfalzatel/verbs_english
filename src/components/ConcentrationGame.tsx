@@ -116,15 +116,31 @@ export default function ConcentrationGame() {
   };
 
   const generateQuestions = (level: GameLevel): Question[] => {
-    const filteredVerbs = verbs.filter(verb => verb.difficulty === level.difficulty);
+    let filteredVerbs = verbs.filter(verb => verb.difficulty === level.difficulty);
+    
+    // If not enough verbs for the requested difficulty, use verbs from other difficulties
+    if (filteredVerbs.length < level.questionCount) {
+      if (level.difficulty === 'hard') {
+        // For hard mode, use medium and easy verbs
+        filteredVerbs = verbs.filter(verb => verb.difficulty === 'medium' || verb.difficulty === 'easy');
+      } else if (level.difficulty === 'medium') {
+        // For medium mode, use easy verbs if needed
+        filteredVerbs = [...filteredVerbs, ...verbs.filter(verb => verb.difficulty === 'easy')];
+      }
+    }
+    
     const selectedVerbs = filteredVerbs.slice(0, level.questionCount);
     
-    return selectedVerbs.map(verb => {
+    // If still not enough verbs, use any available verbs
+    const finalVerbs = selectedVerbs.length < level.questionCount 
+      ? [...selectedVerbs, ...verbs.filter(v => !selectedVerbs.includes(v))].slice(0, level.questionCount)
+      : selectedVerbs;
+    
+    return finalVerbs.map(verb => {
       const questionTypes: Array<'infinitive' | 'past' | 'participle'> = ['infinitive', 'past', 'participle'];
       const questionType = questionTypes[Math.floor(Math.random() * questionTypes.length)];
       
       let correctAnswer: string;
-      let questionText: string;
       
       switch (questionType) {
         case 'infinitive':

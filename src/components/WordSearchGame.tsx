@@ -121,9 +121,27 @@ export default function WordSearchGame() {
   };
 
   const generateGrid = (level: GameLevel) => {
-    const filteredVerbs = verbs.filter(verb => verb.difficulty === level.difficulty);
+    let filteredVerbs = verbs.filter(verb => verb.difficulty === level.difficulty);
+    
+    // If not enough verbs for the requested difficulty, use verbs from other difficulties
+    if (filteredVerbs.length < level.wordCount) {
+      if (level.difficulty === 'hard') {
+        // For hard mode, use medium and easy verbs
+        filteredVerbs = verbs.filter(verb => verb.difficulty === 'medium' || verb.difficulty === 'easy');
+      } else if (level.difficulty === 'medium') {
+        // For medium mode, use easy verbs if needed
+        filteredVerbs = [...filteredVerbs, ...verbs.filter(verb => verb.difficulty === 'easy')];
+      }
+    }
+    
     const selectedVerbs = filteredVerbs.slice(0, level.wordCount);
-    const words = selectedVerbs.map(verb => verb.infinitive.toUpperCase());
+    
+    // If still not enough verbs, use any available verbs
+    const finalVerbs = selectedVerbs.length < level.wordCount 
+      ? [...selectedVerbs, ...verbs.filter(v => !selectedVerbs.includes(v))].slice(0, level.wordCount)
+      : selectedVerbs;
+      
+    const words = finalVerbs.map(verb => verb.infinitive.toUpperCase());
     
     // Create empty grid
     const newGrid: string[][] = Array(level.gridSize).fill(null).map(() =>

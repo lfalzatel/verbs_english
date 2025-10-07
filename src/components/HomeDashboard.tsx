@@ -37,7 +37,11 @@ interface GameCard {
   };
 }
 
-export default function HomeDashboard() {
+interface HomeDashboardProps {
+  onNavigate: (tab: string) => void;
+}
+
+export default function HomeDashboard({ onNavigate }: HomeDashboardProps) {
   const [userName, setUserName] = useState('Luis');
   const [userLevel, setUserLevel] = useState(2);
   const [userXP, setUserXP] = useState(128);
@@ -125,8 +129,21 @@ export default function HomeDashboard() {
   ];
 
   const handleGameClick = (gameId: string) => {
-    // This would navigate to the specific game
-    console.log(`Navigating to ${gameId}`);
+    // Map game IDs to tab names
+    const tabMapping: { [key: string]: string } = {
+      'memory': 'memory',
+      'concentration': 'concentration', 
+      'matching': 'matching',
+      'wordsearch': 'wordsearch',
+      'crossword': 'crossword',
+      'verbs': 'verbs',
+      'stats': 'progress',
+      'profile': 'home' // Navigate to home for profile
+    };
+    
+    const targetTab = tabMapping[gameId] || 'home';
+    console.log(`Game clicked: ${gameId}, navigating to tab: ${targetTab}`);
+    onNavigate(targetTab);
   };
 
   const speakGreeting = () => {

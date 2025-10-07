@@ -139,12 +139,29 @@ export default function MemoryGame() {
   };
 
   const generateCards = (level: GameLevel): Card[] => {
-    const filteredVerbs = verbs.filter(verb => verb.difficulty === level.difficulty);
+    let filteredVerbs = verbs.filter(verb => verb.difficulty === level.difficulty);
+    
+    // If not enough verbs for the requested difficulty, use verbs from other difficulties
+    if (filteredVerbs.length < level.pairsCount) {
+      if (level.difficulty === 'hard') {
+        // For hard mode, use medium and easy verbs
+        filteredVerbs = verbs.filter(verb => verb.difficulty === 'medium' || verb.difficulty === 'easy');
+      } else if (level.difficulty === 'medium') {
+        // For medium mode, use easy verbs if needed
+        filteredVerbs = [...filteredVerbs, ...verbs.filter(verb => verb.difficulty === 'easy')];
+      }
+    }
+    
     const selectedVerbs = filteredVerbs.slice(0, level.pairsCount);
+    
+    // If still not enough verbs, use any available verbs
+    const finalVerbs = selectedVerbs.length < level.pairsCount 
+      ? [...selectedVerbs, ...verbs.filter(v => !selectedVerbs.includes(v))].slice(0, level.pairsCount)
+      : selectedVerbs;
     
     const gameCards: Card[] = [];
     
-    selectedVerbs.forEach((verb, index) => {
+    finalVerbs.forEach((verb, index) => {
       gameCards.push({
         id: `${verb.id}-verb`,
         content: verb.infinitive,

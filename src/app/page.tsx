@@ -179,7 +179,7 @@ export default function Home() {
 
           {/* Tab de Inicio */}
           <TabsContent value="home">
-            <HomeDashboard />
+            <HomeDashboard onNavigate={setActiveTab} />
           </TabsContent>
 
           {/* Tab de Memoria */}

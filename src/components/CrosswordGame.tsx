@@ -130,8 +130,25 @@ export default function CrosswordGame() {
   };
 
   const generateCrossword = (level: GameLevel) => {
-    const filteredVerbs = verbs.filter(verb => verb.difficulty === level.difficulty);
+    let filteredVerbs = verbs.filter(verb => verb.difficulty === level.difficulty);
+    
+    // If not enough verbs for the requested difficulty, use verbs from other difficulties
+    if (filteredVerbs.length < level.gridSize) {
+      if (level.difficulty === 'hard') {
+        // For hard mode, use medium and easy verbs
+        filteredVerbs = verbs.filter(verb => verb.difficulty === 'medium' || verb.difficulty === 'easy');
+      } else if (level.difficulty === 'medium') {
+        // For medium mode, use easy verbs if needed
+        filteredVerbs = [...filteredVerbs, ...verbs.filter(verb => verb.difficulty === 'easy')];
+      }
+    }
+    
     const selectedVerbs = filteredVerbs.slice(0, Math.min(level.gridSize, filteredVerbs.length));
+    
+    // If still not enough verbs, use any available verbs
+    const finalVerbs = selectedVerbs.length < level.gridSize 
+      ? [...selectedVerbs, ...verbs.filter(v => !selectedVerbs.includes(v))].slice(0, level.gridSize)
+      : selectedVerbs;
     
     // Create empty grid
     const newGrid: CrosswordCell[][] = Array(level.gridSize).fill(null).map(() =>
@@ -147,7 +164,7 @@ export default function CrosswordGame() {
     let clueNumber = 1;
 
     // Simple crossword placement algorithm
-    selectedVerbs.forEach((verb, index) => {
+    finalVerbs.forEach((verb, index) => {
       const words = [verb.infinitive, verb.past, verb.participle, verb.translation];
       const word = words[Math.floor(Math.random() * words.length)];
       

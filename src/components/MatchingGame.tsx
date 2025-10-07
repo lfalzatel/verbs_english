@@ -125,12 +125,29 @@ export default function MatchingGame() {
   };
 
   const generateItems = (level: GameLevel): MatchItem[] => {
-    const filteredVerbs = verbs.filter(verb => verb.difficulty === level.difficulty);
+    let filteredVerbs = verbs.filter(verb => verb.difficulty === level.difficulty);
+    
+    // If not enough verbs for the requested difficulty, use verbs from other difficulties
+    if (filteredVerbs.length < level.pairCount) {
+      if (level.difficulty === 'hard') {
+        // For hard mode, use medium and easy verbs
+        filteredVerbs = verbs.filter(verb => verb.difficulty === 'medium' || verb.difficulty === 'easy');
+      } else if (level.difficulty === 'medium') {
+        // For medium mode, use easy verbs if needed
+        filteredVerbs = [...filteredVerbs, ...verbs.filter(verb => verb.difficulty === 'easy')];
+      }
+    }
+    
     const selectedVerbs = filteredVerbs.slice(0, level.pairCount);
+    
+    // If still not enough verbs, use any available verbs
+    const finalVerbs = selectedVerbs.length < level.pairCount 
+      ? [...selectedVerbs, ...verbs.filter(v => !selectedVerbs.includes(v))].slice(0, level.pairCount)
+      : selectedVerbs;
     
     const gameItems: MatchItem[] = [];
     
-    selectedVerbs.forEach((verb, index) => {
+    finalVerbs.forEach((verb, index) => {
       gameItems.push({
         id: `${verb.id}-verb`,
         content: verb.infinitive,
