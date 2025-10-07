@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
 
 const completeVerbs = [
   // Basic Regular Verbs (20)
@@ -114,15 +115,23 @@ const completeVerbs = [
 
 export async function POST(request: NextRequest) {
   try {
-    // In production, we don't actually seed a database
-    // We just return success with the statistics
+    // Clear existing verbs
+    await db.verb.deleteMany();
     
-    const totalVerbs = completeVerbs.length;
-    const regularCount = completeVerbs.filter(v => v.category === 'regular').length;
-    const irregularCount = completeVerbs.filter(v => v.category === 'irregular').length;
-    const easyCount = completeVerbs.filter(v => v.difficulty === 'easy').length;
-    const mediumCount = completeVerbs.filter(v => v.difficulty === 'medium').length;
-    const hardCount = completeVerbs.filter(v => v.difficulty === 'hard').length;
+    // Insert all 98 verbs
+    for (const verb of completeVerbs) {
+      await db.verb.create({
+        data: verb
+      });
+    }
+    
+    // Get statistics
+    const totalVerbs = await db.verb.count();
+    const regularCount = await db.verb.count({ where: { category: 'regular' } });
+    const irregularCount = await db.verb.count({ where: { category: 'irregular' } });
+    const easyCount = await db.verb.count({ where: { difficulty: 'easy' } });
+    const mediumCount = await db.verb.count({ where: { difficulty: 'medium' } });
+    const hardCount = await db.verb.count({ where: { difficulty: 'hard' } });
     
     return NextResponse.json({
       success: true,

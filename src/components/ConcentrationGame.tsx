@@ -51,8 +51,8 @@ const gameLevels: GameLevel[] = [
     id: 'medium',
     name: 'Concentración Media',
     difficulty: 'medium',
-    description: 'Tiempos mixtos - 15 preguntas',
-    questionCount: 15,
+    description: 'Tiempos mixtos - 10 preguntas',
+    questionCount: 10,
     points: 15,
     timeLimit: 300,
     color: 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
@@ -61,8 +61,8 @@ const gameLevels: GameLevel[] = [
     id: 'hard',
     name: 'Concentración Difícil',
     difficulty: 'hard',
-    description: 'Verbos irregulares - 20 preguntas',
-    questionCount: 20,
+    description: 'Verbos irregulares - 10 preguntas',
+    questionCount: 10,
     points: 20,
     timeLimit: 360,
     color: 'bg-red-50 border-red-200 hover:bg-red-100'
