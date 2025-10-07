@@ -1,140 +1,81 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 interface Player {
   name: string;
   level: number;
-  experience: number;
-  totalGames: number;
-  totalScore: number;
-  bestScore: number;
-  achievements: string[];
-  createdAt: string;
-  lastLoginAt: string;
+  xp: number;
+  gamesPlayed: number;
 }
 
 interface PlayerContextType {
   player: Player | null;
-  isLoggedIn: boolean;
-  login: (name: string) => void;
-  logout: () => void;
-  updateStats: (stats: Partial<Player>) => void;
-  addAchievement: (achievementId: string) => void;
+  setPlayer: (player: Player | null) => void;
+  updateXP: (amount: number) => void;
+  incrementGamesPlayed: () => void;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 
-interface PlayerProviderProps {
-  children: ReactNode;
-}
+export function PlayerProvider({ children }: { children: ReactNode }) {
+  const [player, setPlayerState] = useState<Player | null>(null);
 
-export function PlayerProvider({ children }: PlayerProviderProps) {
-  const [player, setPlayer] = useState<Player | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
+  // Load player from localStorage on mount
   useEffect(() => {
-    // Cargar datos del jugador desde localStorage al iniciar
-    const loadPlayer = () => {
+    const savedPlayer = localStorage.getItem('verbosPlayer');
+    if (savedPlayer) {
       try {
-        const savedPlayer = localStorage.getItem('player');
-        if (savedPlayer) {
-          const parsedPlayer = JSON.parse(savedPlayer);
-          setPlayer(parsedPlayer);
-          
-          // Actualizar último login
-          const updatedPlayer = {
-            ...parsedPlayer,
-            lastLoginAt: new Date().toISOString()
-          };
-          setPlayer(updatedPlayer);
-          localStorage.setItem('player', JSON.stringify(updatedPlayer));
-        }
+        setPlayerState(JSON.parse(savedPlayer));
       } catch (error) {
         console.error('Error loading player data:', error);
-        localStorage.removeItem('player');
-      } finally {
-        setIsLoading(false);
+        localStorage.removeItem('verbosPlayer');
       }
-    };
-
-    loadPlayer();
+    }
   }, []);
 
-  const login = (name: string) => {
-    const newPlayer: Player = {
-      name: name.trim(),
-      level: 1,
-      experience: 0,
-      totalGames: 0,
-      totalScore: 0,
-      bestScore: 0,
-      achievements: [],
-      createdAt: new Date().toISOString(),
-      lastLoginAt: new Date().toISOString()
-    };
-
-    setPlayer(newPlayer);
-    localStorage.setItem('player', JSON.stringify(newPlayer));
+  const setPlayer = (newPlayer: Player | null) => {
+    setPlayerState(newPlayer);
+    if (newPlayer) {
+      localStorage.setItem('verbosPlayer', JSON.stringify(newPlayer));
+    } else {
+      localStorage.removeItem('verbosPlayer');
+    }
   };
 
-  const logout = () => {
-    setPlayer(null);
-    localStorage.removeItem('player');
-  };
-
-  const updateStats = (stats: Partial<Player>) => {
+  const updateXP = (amount: number) => {
     if (!player) return;
-
+    
+    const newXP = player.xp + amount;
+    const newLevel = Math.floor(newXP / 100) + 1; // 100 XP per level
+    
     const updatedPlayer = {
       ...player,
-      ...stats,
-      lastLoginAt: new Date().toISOString()
+      xp: newXP,
+      level: newLevel
     };
-
+    
     setPlayer(updatedPlayer);
-    localStorage.setItem('player', JSON.stringify(updatedPlayer));
   };
 
-  const addAchievement = (achievementId: string) => {
+  const incrementGamesPlayed = () => {
     if (!player) return;
-
-    if (player.achievements.includes(achievementId)) return;
-
+    
     const updatedPlayer = {
       ...player,
-      achievements: [...player.achievements, achievementId],
-      experience: player.experience + 50, // Bonus de experiencia por logro
-      lastLoginAt: new Date().toISOString()
+      gamesPlayed: player.gamesPlayed + 1
     };
-
+    
     setPlayer(updatedPlayer);
-    localStorage.setItem('player', JSON.stringify(updatedPlayer));
   };
-
-  const value: PlayerContextType = {
-    player,
-    isLoggedIn: !!player,
-    login,
-    logout,
-    updateStats,
-    addAchievement
-  };
-
-  // Mostrar loading mientras se carga el jugador
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-lg text-gray-600">Cargando...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <PlayerContext.Provider value={value}>
+    <PlayerContext.Provider value={{
+      player,
+      setPlayer,
+      updateXP,
+      incrementGamesPlayed
+    }}>
       {children}
     </PlayerContext.Provider>
   );
